@@ -6,6 +6,8 @@ node_modules/**
 .git/**
 esbuild.js
 tsconfig.json
+vendor/**
+.gitmodules
 **/*.map
 **/*.vsix
 test.smm

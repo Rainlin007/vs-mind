@@ -537,7 +537,7 @@ function initFormulaUi() {
 initFormulaUi()
 
 const SHORTCUT_GUARD_SELECTOR =
-  '#sidePanel, #searchPanel, #formulaDialog, .formula-dialog-panel, .ql-editor, .ql-container, .smm-richtext-node-edit-wrap, .smm-node-edit-wrap'
+  '#sidePanel, #searchPanel, #formulaDialog, .formula-dialog-panel'
 
 function getShortcutEventElement(e) {
   if (e?.target instanceof HTMLElement) return e.target
@@ -549,18 +549,25 @@ function isInsideShortcutGuard(el) {
   return el instanceof HTMLElement && !!el.closest(SHORTCUT_GUARD_SELECTOR)
 }
 
+function isOnEditNodeElement(el) {
+  if (!(el instanceof HTMLElement) || !mindMap) return false
+  const editClasses = mindMap.editNodeClassList || []
+  for (const cls of editClasses) {
+    if (el.classList.contains(cls)) return true
+    if (el.closest(`.${cls}`)) return true
+  }
+  return false
+}
+
 function shouldEnableMindMapShortcut(e) {
   const el = getShortcutEventElement(e)
   if (!el) return false
+  // Inline edit: library registers Enter/Tab tmp shortcuts after save()
+  if (isOnEditNodeElement(el)) return true
   if (isInsideShortcutGuard(el)) return false
   if (el.matches('input, textarea, select')) return false
 
   if (el === document.body) return true
-
-  const editClasses = mindMap?.editNodeClassList || []
-  for (const cls of editClasses) {
-    if (el.classList.contains(cls)) return true
-  }
   return false
 }
 
@@ -937,14 +944,22 @@ toolbar.exportMenu.addEventListener('click', (e) => {
 })
 
 // Sidebar toggle
+function syncMindMapLayoutAfterSidePanelToggle() {
+  requestAnimationFrame(() => {
+    if (mindMap) mindMap.resize()
+  })
+}
+
 toolbar.sidebarToggle.addEventListener('click', () => {
   sidePanel.classList.toggle('hidden')
   toolbar.sidebarToggle.classList.toggle('active', !sidePanel.classList.contains('hidden'))
+  syncMindMapLayoutAfterSidePanelToggle()
 })
 
 $('btn-close-panel').addEventListener('click', () => {
   sidePanel.classList.add('hidden')
   toolbar.sidebarToggle.classList.remove('active')
+  syncMindMapLayoutAfterSidePanelToggle()
 })
 
 // ===== Export =====

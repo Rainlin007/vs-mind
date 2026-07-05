@@ -2,6 +2,11 @@
 
 All notable changes to **VS Mind** are documented in this file.
 
+## [1.0.10] - 2026-07-05
+
+### Fixed
+- Fix inline text-edit box distortion and disappearing theme border on empty nodes; empty nodes now render as a slim cursor-like line (via a local `simple-mind-map` fork included as a submodule)
+
 ## [1.0.7] - 2026-07-05
 
 ### Added
