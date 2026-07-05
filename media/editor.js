@@ -340,6 +340,7 @@ function initMindMap(data, config) {
     setRainbowLinesOpen(getRainbowLinesConfig(fullData).open)
 
     bindMindMapEvents()
+    patchDragDropPreview()
     updateStatusBar()
     updateCanvasSettingsPanel()
 
@@ -352,6 +353,23 @@ function initMindMap(data, config) {
   }
 
   doInit()
+}
+
+// simple-mind-map 默认把放置目标检测节流到 300ms，占位预览会明显滞后
+function patchDragDropPreview() {
+  if (!mindMap?.drag) return
+
+  const drag = mindMap.drag
+  const detectDropTarget = Drag.prototype.checkOverlapNode
+  let rafId = 0
+
+  drag.checkOverlapNode = function scheduleDropTargetCheck() {
+    if (rafId) return
+    rafId = requestAnimationFrame(() => {
+      rafId = 0
+      detectDropTarget.call(drag)
+    })
+  }
 }
 
 function bindMindMapEvents() {

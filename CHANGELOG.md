@@ -2,6 +2,11 @@
 
 All notable changes to **VS Mind** are documented in this file.
 
+## [1.0.6] - 2026-07-05
+
+### Fixed
+- Improve drag-and-drop drop-target preview responsiveness during node reordering
+
 ## [1.0.5] - 2026-07-05
 
 ### Changed
