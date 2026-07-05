@@ -265,6 +265,7 @@ const statusZoom = $('status-zoom')
 // Side panel fields
 const nodeText = $('node-text')
 const nodeNote = $('node-note')
+const nodeComment = $('node-comment')
 const nodeLink = $('node-link')
 const nodeLinkTitle = $('node-link-title')
 const nodeTagsEl = $('node-tags')
@@ -700,6 +701,7 @@ function updateSidePanel() {
   if (activeNodes.length !== 1) {
     nodeText.value = ''
     nodeNote.value = ''
+    nodeComment.value = ''
     nodeLink.value = ''
     nodeLinkTitle.value = ''
     nodeTagsEl.innerHTML = ''
@@ -712,6 +714,7 @@ function updateSidePanel() {
 
   nodeText.value = data.text || ''
   nodeNote.value = data.note || ''
+  nodeComment.value = data.comment || ''
   nodeLink.value = data.hyperlink || ''
   nodeLinkTitle.value = data.hyperlinkTitle || ''
   nodeShape.value = data.shape || ''
@@ -754,6 +757,14 @@ nodeNote.addEventListener('input', () => {
   clearTimeout(sidePanelDebounce)
   sidePanelDebounce = setTimeout(() => {
     mindMap.execCommand('SET_NODE_NOTE', activeNodes[0], nodeNote.value)
+  }, 300)
+})
+
+nodeComment.addEventListener('input', () => {
+  if (!mindMap || activeNodes.length !== 1) return
+  clearTimeout(sidePanelDebounce)
+  sidePanelDebounce = setTimeout(() => {
+    mindMap.execCommand('SET_NODE_DATA', activeNodes[0], { comment: nodeComment.value })
   }, 300)
 })
 

@@ -123,6 +123,7 @@ Traverse **depth-first** to read the map as an outline.
 | `uid` | string | Stable node id (UUID recommended) |
 | `richText` | boolean | If `true`, `text` is HTML |
 | `note` | string | Longer note (plain text) |
+| `comment` | string | Node annotation; not rendered on canvas |
 | `hyperlink` | string | URL |
 | `hyperlinkTitle` | string | Link display name |
 | `tag` | string[] | Tags |

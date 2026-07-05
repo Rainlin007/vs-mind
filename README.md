@@ -29,7 +29,8 @@
 **From VSIX**
 
 ```bash
-code --install-extension vs-mind-1.0.2.vsix
+npm run package
+code --install-extension ./*.vsix
 ```
 
 ## Quick Start

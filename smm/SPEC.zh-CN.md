@@ -62,7 +62,7 @@
 
 ### 内容字段（`data`）
 
-`text`、`expand`、`uid`、`richText`、`note`、`hyperlink`、`hyperlinkTitle`、`tag`、`icon`、`image`、`shape` 等。
+`text`、`expand`、`uid`、`richText`、`note`、`comment`、`hyperlink`、`hyperlinkTitle`、`tag`、`icon`、`image`、`shape` 等。
 
 ### 样式字段（`data`，可选）
 

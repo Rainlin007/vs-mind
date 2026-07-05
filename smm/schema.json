@@ -68,6 +68,7 @@
         "uid": { "type": "string" },
         "richText": { "type": "boolean" },
         "note": { "type": "string" },
+        "comment": { "type": "string" },
         "hyperlink": { "type": "string" },
         "hyperlinkTitle": { "type": "string" },
         "tag": {

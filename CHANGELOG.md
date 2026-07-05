@@ -2,6 +2,15 @@
 
 All notable changes to **VS Mind** are documented in this file.
 
+## [1.0.7] - 2026-07-05
+
+### Added
+- Add side-panel node comment field (`data.comment`) that stays off the canvas
+
+### Changed
+- Document SMM `comment` field in the format spec
+- Use version-agnostic VSIX install instructions in README
+
 ## [1.0.6] - 2026-07-05
 
 ### Fixed
