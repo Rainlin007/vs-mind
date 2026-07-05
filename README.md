@@ -99,6 +99,18 @@ All commands are available via the Command Palette:
 
 ## Development
 
+This project vendors a [fork of `simple-mind-map`](https://github.com/Rainlin007/mind-map) as a **git submodule** under `vendor/mind-map` (see [Acknowledgments](#acknowledgments) for why). Make sure the submodule is checked out before building:
+
+```bash
+# clone with submodules
+git clone --recurse-submodules https://github.com/Rainlin007/vs-mind.git
+
+# or, if already cloned
+git submodule update --init --recursive
+```
+
+Then:
+
 ```bash
 npm install
 npm run build
@@ -106,6 +118,8 @@ npm run watch      # rebuild on change
 npm run package    # create .vsix
 npm run publish    # publish to Marketplace (requires vsce login)
 ```
+
+The build (`esbuild.js`) redirects all `simple-mind-map` imports to the local fork in `vendor/mind-map`, so the extension is always built against the patched source.
 
 ## Links
 
@@ -116,6 +130,8 @@ npm run publish    # publish to Marketplace (requires vsce login)
 ## Acknowledgments
 
 VS Mind is built on top of the excellent open-source [simple-mind-map](https://github.com/wanglin2/mind-map) library.
+
+To fix a few upstream issues that affect the editing experience (e.g. an empty node distorting the inline text-edit box and losing its theme border), VS Mind uses a lightweight [fork of simple-mind-map](https://github.com/Rainlin007/mind-map) included as a git submodule. The fork tracks upstream and only carries minimal, focused patches; fixes are intended to be contributed back where possible.
 
 ## License
 
@@ -175,6 +191,26 @@ MIT
 ### 致谢
 
 本扩展基于开源项目 [simple-mind-map](https://github.com/wanglin2/mind-map) 构建。
+
+为修复原库在编辑体验上的一些问题（例如空节点会导致内联输入框变形、主题边框消失），本扩展使用了一个轻量的 [simple-mind-map fork](https://github.com/Rainlin007/mind-map)，以 git submodule 的形式包含在 `vendor/mind-map` 中。该 fork 跟随上游，仅携带最小化的针对性修复，并会尽量将修复回馈上游。
+
+### 开发
+
+fork 通过 git submodule 引入，构建前需先检出子模块：
+
+```bash
+# 克隆时带上子模块
+git clone --recurse-submodules https://github.com/Rainlin007/vs-mind.git
+# 或已克隆过：
+git submodule update --init --recursive
+
+npm install
+npm run build      # 构建
+npm run watch      # 监听变更重建
+npm run package    # 生成 .vsix
+```
+
+构建脚本（`esbuild.js`）会把所有 `simple-mind-map` 的导入重定向到 `vendor/mind-map` 里的本地 fork，因此始终基于已打补丁的源码构建。
 
 ### 链接
 
