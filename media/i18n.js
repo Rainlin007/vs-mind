@@ -30,6 +30,15 @@ const MESSAGES = {
       lightGroup: 'Light Themes',
       darkGroup: 'Dark Themes',
     },
+    rainbow: {
+      off: 'Off',
+      colors1: 'Warm',
+      colors2: 'Bright',
+      colors3: 'Ocean',
+      colors4: 'Soft',
+      colors5: 'Sunset',
+      colors6: 'Forest',
+    },
     layout: {
       logicalStructure: 'Logical',
       logicalStructureLeft: 'Logical (L)',
@@ -40,9 +49,16 @@ const MESSAGES = {
       fishbone: 'Fishbone',
     },
     panel: {
+      tabNode: 'Node',
+      tabTheme: 'Theme',
+      noNodeSelected: 'Select a node to edit its properties',
+      themeSettings: 'Canvas',
+      themeTemplate: 'Theme',
+      layout: 'Layout',
+      rainbowLines: 'Rainbow Lines',
       canvasSettings: 'Canvas',
       lineWidth: 'Line Width',
-      nodeProperties: 'Node Properties',
+      canvasBackground: 'Background',
       text: 'Text',
       note: 'Note',
       comment: 'Comment',
@@ -54,6 +70,9 @@ const MESSAGES = {
       fontColor: 'Font Color',
       backgroundColor: 'Background',
       fontSize: 'Font Size',
+      reset: 'Reset to Default',
+      resetNodeHint: 'Clears custom styles, note, link, tags, and comment for the selected node',
+      resetThemeHint: 'Restores canvas background, line width, and rainbow lines to theme defaults',
       textPlaceholder: 'Double-click node to edit, or edit here ($...$ for formula)',
       notePlaceholder: 'Add a note...',
       commentPlaceholder: 'Not shown on the map — for your notes or AI',
@@ -154,6 +173,15 @@ const MESSAGES = {
       lightGroup: '浅色主题',
       darkGroup: '深色主题',
     },
+    rainbow: {
+      off: '关闭',
+      colors1: '暖色',
+      colors2: '明亮',
+      colors3: '海洋',
+      colors4: '柔和',
+      colors5: '日落',
+      colors6: '森林',
+    },
     layout: {
       logicalStructure: '逻辑结构图',
       logicalStructureLeft: '逻辑结构图(左)',
@@ -164,9 +192,16 @@ const MESSAGES = {
       fishbone: '鱼骨图',
     },
     panel: {
+      tabNode: '节点',
+      tabTheme: '主题',
+      noNodeSelected: '选中一个节点后可编辑其属性',
+      themeSettings: '画布',
+      themeTemplate: '主题',
+      layout: '布局',
+      rainbowLines: '彩虹线条',
       canvasSettings: '画布',
       lineWidth: '连线粗细',
-      nodeProperties: '节点属性',
+      canvasBackground: '背景色',
       text: '文本',
       note: '备注',
       comment: '节点注释',
@@ -176,8 +211,11 @@ const MESSAGES = {
       shape: '形状',
       style: '样式',
       fontColor: '字体颜色',
-      backgroundColor: '背景色',
-      fontSize: '字体大小',
+      backgroundColor: '背景',
+      fontSize: '字体',
+      reset: '恢复默认',
+      resetNodeHint: '清除当前节点的自定义样式、备注、链接、标签和注释',
+      resetThemeHint: '将画布背景、连线粗细和彩虹线条恢复为主题默认值',
       textPlaceholder: '双击节点编辑，或在此输入（$...$ 为公式）',
       notePlaceholder: '添加备注...',
       commentPlaceholder: '不在导图显示，可自用或供 AI 阅读',
@@ -324,10 +362,7 @@ export function applyDomI18n() {
     'btn-add-sibling': 'toolbar.addSibling',
     'btn-delete': 'toolbar.delete',
     'btn-painter': 'toolbar.painter',
-    'btn-rainbow-lines': 'toolbar.rainbowLines',
     'btn-search': 'toolbar.search',
-    'btn-layout': 'toolbar.layout',
-    'btn-theme': 'toolbar.theme',
     'btn-zoom-out': 'toolbar.zoomOut',
     'btn-zoom-in': 'toolbar.zoomIn',
     'btn-fit': 'toolbar.fit',
@@ -356,10 +391,21 @@ export function applyDomI18n() {
     if (el) el.title = t(key)
   }
 
+  const resetNodeButton = document.getElementById('btn-reset-node')
+  if (resetNodeButton) resetNodeButton.title = t('panel.resetNodeHint')
+  const resetThemeButton = document.getElementById('btn-reset-theme')
+  if (resetThemeButton) resetThemeButton.title = t('panel.resetThemeHint')
+
   const labels = {
-    'panel-node-properties': 'panel.nodeProperties',
-    'label-canvas-settings': 'panel.canvasSettings',
+    'panel-tab-node': 'panel.tabNode',
+    'panel-tab-theme': 'panel.tabTheme',
+    'node-panel-empty': 'panel.noNodeSelected',
+    'label-theme-settings': 'panel.themeSettings',
+    'label-theme-template': 'panel.themeTemplate',
+    'label-layout': 'panel.layout',
+    'label-rainbow-lines': 'panel.rainbowLines',
     'label-line-width': 'panel.lineWidth',
+    'label-canvas-bg-color': 'panel.canvasBackground',
     'label-node-text': 'panel.text',
     'label-node-note': 'panel.note',
     'label-node-comment': 'panel.comment',
@@ -370,6 +416,8 @@ export function applyDomI18n() {
     'label-node-color': 'panel.fontColor',
     'label-node-bg-color': 'panel.backgroundColor',
     'label-node-font-size': 'panel.fontSize',
+    'btn-reset-node': 'panel.reset',
+    'btn-reset-theme': 'panel.reset',
   }
 
   for (const [id, key] of Object.entries(labels)) {
@@ -391,10 +439,6 @@ export function applyDomI18n() {
     const el = document.getElementById(id)
     if (el) el.placeholder = t(key)
   }
-
-  document.querySelectorAll('#layout-menu .dropdown-item[data-layout]').forEach((item) => {
-    item.textContent = t(`layout.${item.dataset.layout}`)
-  })
 
   const shapeSelect = document.getElementById('node-shape')
   if (shapeSelect) {

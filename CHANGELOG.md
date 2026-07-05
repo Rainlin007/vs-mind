@@ -2,6 +2,21 @@
 
 All notable changes to **VS Mind** are documented in this file.
 
+## [1.0.11] - 2026-07-05
+
+### Added
+- Split side panel into **Node** and **Theme** tabs with reset-to-default actions
+- Theme tab: theme/layout dropdowns, canvas background, line width, and rainbow line presets
+- Node style opacity sliders for font color and node background
+
+### Changed
+- Move theme, layout, and rainbow line controls from the toolbar into the Theme side panel
+- Show effective theme colors in the node panel (supports `rgb`, `rgba`, and `transparent`)
+
+### Fixed
+- Fix side panel init failure when i18n referenced missing reset button elements
+- Fix canvas background turning black when loading files with invalid `backgroundColor`
+
 ## [1.0.10] - 2026-07-05
 
 ### Fixed

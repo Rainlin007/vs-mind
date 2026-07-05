@@ -21,6 +21,12 @@ import {
   updateStatusBarI18n,
 } from './i18n.js'
 import { getThemeGroups, registerThemes } from './themes.js'
+import {
+  buildRainbowLinesConfig,
+  getRainbowLinePresets,
+  getRainbowPresetById,
+  resolveRainbowPresetId,
+} from './rainbowLines.js'
 
 registerThemes(MindMap)
 
@@ -83,8 +89,22 @@ function isValidMindMapData(data) {
   )
 }
 
+function normalizeThemeConfig(config) {
+  if (!config || typeof config !== 'object') return {}
+  const normalized = { ...config }
+  if (
+    !normalized.backgroundColor ||
+    normalized.backgroundColor === 'transparent' ||
+    normalized.backgroundColor === 'none'
+  ) {
+    delete normalized.backgroundColor
+  }
+  return normalized
+}
+
 function normalizeMindMapData(data) {
   if (isValidMindMapData(data)) {
+    const theme = data.theme || DEFAULT_MIND_MAP_DATA.theme
     return {
       layout: data.layout || DEFAULT_MIND_MAP_DATA.layout,
       root: {
@@ -96,7 +116,10 @@ function normalizeMindMapData(data) {
         },
         children: data.root.children || [],
       },
-      theme: data.theme || DEFAULT_MIND_MAP_DATA.theme,
+      theme: {
+        template: theme.template || DEFAULT_MIND_MAP_DATA.theme.template,
+        config: normalizeThemeConfig(theme.config),
+      },
       rainbowLinesConfig: getRainbowLinesConfig(data),
       ...(isValidView(data.view) ? { view: data.view } : {}),
     }
@@ -137,38 +160,52 @@ let lastSyncedJSON = ''
 let currentLayout = 'logicalStructure'
 let currentTheme = 'default'
 let rainbowLinesOpen = false
+let currentRainbowPreset = 'close'
 
 function setCurrentLayout(value) {
   currentLayout = value
-  toolbar.layoutMenu.querySelectorAll('.dropdown-item').forEach((item) => {
-    item.classList.toggle('active', item.dataset.layout === value)
-  })
+  if (layoutSelect) layoutSelect.value = value
 }
 
 function setCurrentTheme(value) {
   currentTheme = value
-  toolbar.themeMenu.querySelectorAll('.dropdown-item[data-theme]').forEach((item) => {
-    item.classList.toggle('active', item.dataset.theme === value)
-  })
+  if (themeSelect) themeSelect.value = value
 }
 
-function renderThemeMenu() {
-  toolbar.themeMenu.innerHTML = ''
-  for (const group of getThemeGroups()) {
-    const label = document.createElement('div')
-    label.className = 'dropdown-group-label'
-    label.textContent = group.label
-    toolbar.themeMenu.appendChild(label)
-
-    for (const theme of group.themes) {
-      const item = document.createElement('div')
-      item.className = 'dropdown-item'
-      item.dataset.theme = theme.value
-      item.textContent = theme.label
-      if (theme.value === currentTheme) item.classList.add('active')
-      toolbar.themeMenu.appendChild(item)
-    }
+function renderLayoutSelect() {
+  if (!layoutSelect) return
+  layoutSelect.innerHTML = ''
+  for (const option of getLayoutOptions()) {
+    const el = document.createElement('option')
+    el.value = option.value
+    el.textContent = option.label
+    layoutSelect.appendChild(el)
   }
+  layoutSelect.value = currentLayout
+}
+
+function renderThemeSelect() {
+  if (!themeSelect) return
+  themeSelect.innerHTML = ''
+  for (const group of getThemeGroups()) {
+    const optgroup = document.createElement('optgroup')
+    optgroup.label = group.label
+    for (const theme of group.themes) {
+      const option = document.createElement('option')
+      option.value = theme.value
+      option.textContent = theme.label
+      optgroup.appendChild(option)
+    }
+    themeSelect.appendChild(optgroup)
+  }
+  themeSelect.value = currentTheme
+}
+
+function applyLayout(layout) {
+  if (!mindMap || layout === currentLayout) return
+  mindMap.setLayout(layout)
+  setCurrentLayout(layout)
+  syncDocumentFromMindMap()
 }
 
 function applyTheme(theme) {
@@ -201,11 +238,57 @@ function getDocumentData() {
   }
 }
 
-function setRainbowLinesOpen(open) {
-  rainbowLinesOpen = open
-  if (toolbar.rainbowLines) {
-    toolbar.rainbowLines.classList.toggle('active', open)
+function setRainbowLinesState(config) {
+  const normalized = getRainbowLinesConfig({ rainbowLinesConfig: config })
+  rainbowLinesOpen = normalized.open
+  currentRainbowPreset = resolveRainbowPresetId(normalized)
+  if (rainbowLinesSelect) rainbowLinesSelect.value = currentRainbowPreset
+  updateRainbowPreview()
+}
+
+function createRainbowColorsBar(colors) {
+  const bar = document.createElement('div')
+  bar.className = 'rainbow-colors-bar'
+  for (const color of colors) {
+    const chip = document.createElement('span')
+    chip.className = 'rainbow-color-chip'
+    chip.style.backgroundColor = color
+    bar.appendChild(chip)
   }
+  return bar
+}
+
+function renderRainbowSelect() {
+  if (!rainbowLinesSelect) return
+  rainbowLinesSelect.innerHTML = ''
+  const offOption = document.createElement('option')
+  offOption.value = 'close'
+  offOption.textContent = t('rainbow.off')
+  rainbowLinesSelect.appendChild(offOption)
+  for (const preset of getRainbowLinePresets()) {
+    const option = document.createElement('option')
+    option.value = preset.id
+    option.textContent = preset.label
+    rainbowLinesSelect.appendChild(option)
+  }
+  rainbowLinesSelect.value = currentRainbowPreset
+  updateRainbowPreview()
+}
+
+function updateRainbowPreview() {
+  if (!rainbowLinesPreviewEl) return
+  rainbowLinesPreviewEl.innerHTML = ''
+  if (currentRainbowPreset === 'close') {
+    rainbowLinesPreviewEl.classList.add('hidden')
+    return
+  }
+  const preset = getRainbowPresetById(currentRainbowPreset)
+  if (!preset) {
+    rainbowLinesPreviewEl.classList.add('hidden')
+    return
+  }
+  rainbowLinesPreviewEl.classList.remove('hidden')
+  rainbowLinesPreviewEl.appendChild(createRainbowColorsBar(preset.list))
 }
 
 function applyRainbowLinesConfig(config) {
@@ -216,16 +299,12 @@ function applyRainbowLinesConfig(config) {
   } else {
     mindMap.updateConfig({ rainbowLinesConfig: normalized })
   }
-  setRainbowLinesOpen(normalized.open)
+  setRainbowLinesState(normalized)
 }
 
-function toggleRainbowLines() {
+function selectRainbowPreset(presetId) {
   if (!mindMap || !mindMap.rainbowLines) return
-  const { rainbowLinesConfig } = mindMap.opt
-  applyRainbowLinesConfig({
-    open: !rainbowLinesOpen,
-    colorsList: rainbowLinesConfig?.colorsList || [],
-  })
+  applyRainbowLinesConfig(buildRainbowLinesConfig(presetId))
   syncDocumentFromMindMap()
 }
 
@@ -238,12 +317,7 @@ const toolbar = {
   addSibling: $('btn-add-sibling'),
   delete: $('btn-delete'),
   painter: $('btn-painter'),
-  rainbowLines: $('btn-rainbow-lines'),
   search: $('btn-search'),
-  layoutBtn: $('btn-layout'),
-  layoutMenu: $('layout-menu'),
-  themeBtn: $('btn-theme'),
-  themeMenu: $('theme-menu'),
   zoomIn: $('btn-zoom-in'),
   zoomOut: $('btn-zoom-out'),
   zoomLevel: $('zoom-level'),
@@ -260,6 +334,13 @@ const searchInput = $('search-input')
 const replaceInput = $('replace-input')
 const searchCount = $('search-count')
 const sidePanel = $('sidePanel')
+const sidePanelTabs = Array.from(document.querySelectorAll('.side-panel-tab'))
+const sidePanelPages = {
+  node: $('panel-page-node'),
+  theme: $('panel-page-theme'),
+}
+const nodePanelEmpty = $('node-panel-empty')
+const nodePanelContent = $('node-panel-content')
 const contextMenuEl = $('contextMenu')
 const statusNodes = $('status-nodes')
 const statusZoom = $('status-zoom')
@@ -274,9 +355,20 @@ const nodeTagsEl = $('node-tags')
 const nodeTagInput = $('node-tag-input')
 const nodeShape = $('node-shape')
 const nodeColor = $('node-color')
+const nodeColorOpacity = $('node-color-opacity')
 const nodeBgColor = $('node-bg-color')
+const nodeBgOpacity = $('node-bg-opacity')
 const nodeFontSize = $('node-font-size')
 const lineWidthInput = $('line-width')
+const canvasBgColor = $('canvas-bg-color')
+const themeSelect = $('theme-select')
+const layoutSelect = $('layout-select')
+const rainbowLinesSelect = $('rainbow-lines-select')
+const rainbowLinesPreviewEl = $('rainbow-lines-preview')
+const resetNodeBtn = $('btn-reset-node')
+const resetThemeBtn = $('btn-reset-theme')
+
+let currentSidePanelTab = 'node'
 
 // Formula dialog
 const formulaDialogEl = $('formulaDialog')
@@ -655,12 +747,13 @@ function initMindMap(data, config) {
 
     setCurrentLayout(fullData.layout || 'logicalStructure')
     setCurrentTheme((fullData.theme && fullData.theme.template) || 'default')
-    setRainbowLinesOpen(getRainbowLinesConfig(fullData).open)
+    setRainbowLinesState(getRainbowLinesConfig(fullData))
 
     bindMindMapEvents()
     patchDragDropPreview()
     updateStatusBar()
-    updateCanvasSettingsPanel()
+    updateThemePanel()
+    updateSidePanel()
     requestAnimationFrame(() => hydrateAllFormulaNodes())
 
     // Record the initial state so we don't trigger false dirty
@@ -798,6 +891,9 @@ function onNodeActive(node, activeNodeList) {
   }
   activeNodes = activeNodeList || []
   updateSidePanel()
+  if (activeNodes.length === 1) {
+    switchSidePanelTab('node')
+  }
   if (document.activeElement === nodeText) {
     nodeText.blur()
   }
@@ -835,8 +931,6 @@ toolbar.painter.addEventListener('click', () => {
   }
 })
 
-toolbar.rainbowLines.addEventListener('click', toggleRainbowLines)
-
 toolbar.search.addEventListener('click', toggleSearch)
 
 toolbar.zoomIn.addEventListener('click', () => {
@@ -872,50 +966,8 @@ function positionDropdownMenu(menu, anchor) {
 }
 
 function closeToolbarMenus(except) {
-  for (const menu of [toolbar.exportMenu, toolbar.layoutMenu, toolbar.themeMenu]) {
-    if (menu !== except) menu.classList.remove('show')
-  }
+  if (toolbar.exportMenu !== except) toolbar.exportMenu.classList.remove('show')
 }
-
-// Theme dropdown
-toolbar.themeBtn.addEventListener('click', (e) => {
-  e.stopPropagation()
-  const willShow = !toolbar.themeMenu.classList.contains('show')
-  closeToolbarMenus(willShow ? toolbar.themeMenu : null)
-  if (willShow) {
-    renderThemeMenu()
-    positionDropdownMenu(toolbar.themeMenu, toolbar.themeBtn)
-  }
-  toolbar.themeMenu.classList.toggle('show', willShow)
-})
-
-toolbar.themeMenu.addEventListener('click', (e) => {
-  e.stopPropagation()
-  const item = e.target.closest('.dropdown-item[data-theme]')
-  if (!item) return
-  applyTheme(item.dataset.theme)
-  toolbar.themeMenu.classList.remove('show')
-})
-
-// Layout dropdown
-toolbar.layoutBtn.addEventListener('click', (e) => {
-  e.stopPropagation()
-  const willShow = !toolbar.layoutMenu.classList.contains('show')
-  closeToolbarMenus(willShow ? toolbar.layoutMenu : null)
-  if (willShow) positionDropdownMenu(toolbar.layoutMenu, toolbar.layoutBtn)
-  toolbar.layoutMenu.classList.toggle('show', willShow)
-})
-
-toolbar.layoutMenu.addEventListener('click', (e) => {
-  e.stopPropagation()
-  const item = e.target.closest('.dropdown-item')
-  if (!item || !mindMap) return
-  const layout = item.dataset.layout
-  mindMap.setLayout(layout)
-  setCurrentLayout(layout)
-  syncDocumentFromMindMap()
-  toolbar.layoutMenu.classList.remove('show')
-})
 
 // Export dropdown
 function positionExportMenu() {
@@ -1050,9 +1102,207 @@ $('btn-replace-all').addEventListener('click', () => {
 $('btn-search-close').addEventListener('click', toggleSearch)
 
 // ===== Side Panel =====
+function parseColorChannels(color) {
+  if (!color || color === 'transparent' || color === 'none') return null
+  if (typeof color !== 'string') return null
+
+  if (color.startsWith('#')) {
+    let hex = color.slice(1)
+    if (hex.length === 3) {
+      hex = hex.split('').map((char) => char + char).join('')
+    }
+    if (hex.length === 8) {
+      const r = parseInt(hex.slice(0, 2), 16)
+      const g = parseInt(hex.slice(2, 4), 16)
+      const b = parseInt(hex.slice(4, 6), 16)
+      const a = parseInt(hex.slice(6, 8), 16) / 255
+      return { r, g, b, a }
+    }
+    if (hex.length === 6) {
+      return {
+        r: parseInt(hex.slice(0, 2), 16),
+        g: parseInt(hex.slice(2, 4), 16),
+        b: parseInt(hex.slice(4, 6), 16),
+        a: 1,
+      }
+    }
+    return null
+  }
+
+  const rgbaMatch = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i)
+  if (rgbaMatch) {
+    return {
+      r: Number(rgbaMatch[1]),
+      g: Number(rgbaMatch[2]),
+      b: Number(rgbaMatch[3]),
+      a: rgbaMatch[4] === undefined ? 1 : Number(rgbaMatch[4]),
+    }
+  }
+
+  const tmp = document.createElement('div')
+  tmp.style.color = color
+  document.body.appendChild(tmp)
+  const computed = window.getComputedStyle(tmp).color
+  document.body.removeChild(tmp)
+  const computedMatch = computed.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i)
+  if (!computedMatch) return null
+  return {
+    r: Number(computedMatch[1]),
+    g: Number(computedMatch[2]),
+    b: Number(computedMatch[3]),
+    a: computedMatch[4] === undefined ? 1 : Number(computedMatch[4]),
+  }
+}
+
+function channelsToHex({ r, g, b }) {
+  const hex = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')
+  return `#${hex(r)}${hex(g)}${hex(b)}`
+}
+
+function colorToHexInputValue(color, fallback = '#fafafa', blendBackground = null) {
+  const parsed = parseColorChannels(color)
+  if (!parsed) return fallback
+
+  let { r, g, b, a } = parsed
+  if (a < 1) {
+    const bg = parseColorChannels(blendBackground) || parseColorChannels(fallback)
+    if (bg) {
+      r = r * a + bg.r * (1 - a)
+      g = g * a + bg.g * (1 - a)
+      b = b * a + bg.b * (1 - a)
+    }
+  }
+
+  return channelsToHex({ r, g, b })
+}
+
+function parseColorForPanel(color, fallbackHex) {
+  if (!color || color === 'transparent' || color === 'none') {
+    return { hex: fallbackHex, opacity: 0 }
+  }
+  const parsed = parseColorChannels(color)
+  if (!parsed) {
+    return { hex: fallbackHex, opacity: 100 }
+  }
+  return {
+    hex: channelsToHex(parsed),
+    opacity: Math.round(parsed.a * 100),
+  }
+}
+
+function formatColorWithOpacity(hex, opacityPercent, options = {}) {
+  const { useTransparentAtZero = false } = options
+  const opacity = Math.max(0, Math.min(100, Number(opacityPercent) || 0))
+  if (opacity === 0 && useTransparentAtZero) return 'transparent'
+  if (opacity === 100) return hex
+  const parsed = parseColorChannels(hex)
+  if (!parsed) return hex
+  const alpha = Math.round(opacity) / 100
+  return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${alpha})`
+}
+
+function updateOpacityLabel(input) {
+  const label = document.getElementById(`${input.id}-value`)
+  if (label) label.textContent = `${input.value}%`
+}
+
+const THEME_PANEL_CONFIG_KEYS = [
+  'backgroundColor',
+  'backgroundImage',
+  'backgroundRepeat',
+  'backgroundPosition',
+  'backgroundSize',
+  'lineWidth',
+  'generalizationLineWidth',
+]
+
+function switchSidePanelTab(tab) {
+  if (!sidePanelPages[tab]) return
+  currentSidePanelTab = tab
+  sidePanelTabs.forEach((button) => {
+    button.classList.toggle('active', button.dataset.panel === tab)
+  })
+  Object.entries(sidePanelPages).forEach(([name, page]) => {
+    page?.classList.toggle('active', name === tab)
+  })
+}
+
+function resetThemePanelSettings() {
+  if (!mindMap) return
+  const themeName = mindMap.getTheme()
+  const custom = { ...mindMap.getCustomThemeConfig() }
+  for (const key of THEME_PANEL_CONFIG_KEYS) {
+    delete custom[key]
+  }
+  mindMap.setThemeConfig(custom)
+  mindMap.setTheme(themeName)
+  applyRainbowLinesConfig({ open: false, colorsList: [] })
+  updateThemePanel()
+  syncDocumentFromMindMap()
+}
+
+function resetNodePanelSettings() {
+  if (!mindMap || activeNodes.length !== 1) return
+  const node = activeNodes[0]
+  mindMap.execCommand('REMOVE_CUSTOM_STYLES', node)
+  mindMap.execCommand('SET_NODE_NOTE', node, '')
+  mindMap.execCommand('SET_NODE_HYPERLINK', node, '', '')
+  mindMap.execCommand('SET_NODE_TAG', node, [])
+  mindMap.execCommand('SET_NODE_DATA', node, { comment: '' })
+  updateSidePanel()
+  syncDocumentFromMindMap()
+}
+
+function setNodePanelFieldsEnabled(enabled) {
+  const fields = [
+    nodeText,
+    nodeNote,
+    nodeComment,
+    nodeLink,
+    nodeLinkTitle,
+    nodeTagInput,
+    nodeShape,
+    nodeColor,
+    nodeColorOpacity,
+    nodeBgColor,
+    nodeBgOpacity,
+    nodeFontSize,
+  ]
+  for (const field of fields) {
+    if (field) field.disabled = !enabled
+  }
+  if (resetNodeBtn) resetNodeBtn.disabled = !enabled
+}
+
+function updateThemePanel() {
+  renderThemeSelect()
+  renderLayoutSelect()
+  updateCanvasSettingsPanel()
+}
+
 function updateCanvasSettingsPanel() {
   if (!mindMap || !lineWidthInput) return
   lineWidthInput.value = mindMap.getThemeConfig('lineWidth')
+  if (canvasBgColor) {
+    canvasBgColor.value = colorToHexInputValue(
+      mindMap.getThemeConfig('backgroundColor'),
+      '#fafafa',
+    )
+  }
+  if (mindMap.opt?.rainbowLinesConfig) {
+    setRainbowLinesState(mindMap.opt.rainbowLinesConfig)
+  } else {
+    renderRainbowSelect()
+  }
+}
+
+function setCanvasBackgroundColor(color) {
+  if (!mindMap || !color || color === 'transparent') return
+  mindMap.setThemeConfig({
+    ...mindMap.getCustomThemeConfig(),
+    backgroundColor: color,
+  })
+  syncDocumentFromMindMap()
 }
 
 function setLineWidth(width) {
@@ -1068,7 +1318,16 @@ function setLineWidth(width) {
 }
 
 function updateSidePanel() {
-  if (activeNodes.length !== 1) {
+  const hasSingleNode = activeNodes.length === 1
+  if (nodePanelEmpty) {
+    nodePanelEmpty.classList.toggle('hidden', hasSingleNode)
+  }
+  if (nodePanelContent) {
+    nodePanelContent.classList.toggle('hidden', !hasSingleNode)
+  }
+  setNodePanelFieldsEnabled(hasSingleNode)
+
+  if (!hasSingleNode) {
     nodeText.value = ''
     nodeNote.value = ''
     nodeComment.value = ''
@@ -1092,13 +1351,17 @@ function updateSidePanel() {
   // Tags
   renderTags(data.tag || [])
 
-  // Style
-  const style = node.getStyle('color') || ''
-  const bgStyle = node.getStyle('fillColor') || ''
-  const fontSize = node.getStyle('fontSize') || 14
-  if (style) nodeColor.value = style
-  if (bgStyle) nodeBgColor.value = bgStyle
-  nodeFontSize.value = fontSize
+  // Style — show effective colors and separate opacity controls
+  const canvasBgHex = colorToHexInputValue(mindMap?.getThemeConfig('backgroundColor'), '#ffffff')
+  const fontState = parseColorForPanel(node.getStyle('color'), '#333333')
+  const bgState = parseColorForPanel(node.getStyle('fillColor'), canvasBgHex)
+  nodeColor.value = fontState.hex
+  nodeColorOpacity.value = fontState.opacity
+  updateOpacityLabel(nodeColorOpacity)
+  nodeBgColor.value = bgState.hex
+  nodeBgOpacity.value = bgState.opacity
+  updateOpacityLabel(nodeBgOpacity)
+  nodeFontSize.value = node.getStyle('fontSize') || 14
 }
 
 function renderTags(tags) {
@@ -1114,7 +1377,11 @@ function renderTags(tags) {
 // Side panel event listeners
 let sidePanelDebounce = null
 
-nodeText.addEventListener('input', () => {
+function bindSidePanelField(el, eventName, handler) {
+  el?.addEventListener(eventName, handler)
+}
+
+bindSidePanelField(nodeText, 'input', () => {
   if (!mindMap || activeNodes.length !== 1) return
   clearTimeout(sidePanelDebounce)
   sidePanelDebounce = setTimeout(() => {
@@ -1122,13 +1389,13 @@ nodeText.addEventListener('input', () => {
   }, 300)
 })
 
-nodeText.addEventListener('blur', () => {
+bindSidePanelField(nodeText, 'blur', () => {
   if (!mindMap || activeNodes.length !== 1) return
   clearTimeout(sidePanelDebounce)
   applySidePanelNodeText(activeNodes[0], nodeText.value)
 })
 
-nodeNote.addEventListener('input', () => {
+bindSidePanelField(nodeNote, 'input', () => {
   if (!mindMap || activeNodes.length !== 1) return
   clearTimeout(sidePanelDebounce)
   sidePanelDebounce = setTimeout(() => {
@@ -1136,7 +1403,7 @@ nodeNote.addEventListener('input', () => {
   }, 300)
 })
 
-nodeComment.addEventListener('input', () => {
+bindSidePanelField(nodeComment, 'input', () => {
   if (!mindMap || activeNodes.length !== 1) return
   clearTimeout(sidePanelDebounce)
   sidePanelDebounce = setTimeout(() => {
@@ -1144,17 +1411,17 @@ nodeComment.addEventListener('input', () => {
   }, 300)
 })
 
-nodeLink.addEventListener('change', () => {
+bindSidePanelField(nodeLink, 'change', () => {
   if (!mindMap || activeNodes.length !== 1) return
   mindMap.execCommand('SET_NODE_HYPERLINK', activeNodes[0], nodeLink.value, nodeLinkTitle.value)
 })
 
-nodeLinkTitle.addEventListener('change', () => {
+bindSidePanelField(nodeLinkTitle, 'change', () => {
   if (!mindMap || activeNodes.length !== 1) return
   mindMap.execCommand('SET_NODE_HYPERLINK', activeNodes[0], nodeLink.value, nodeLinkTitle.value)
 })
 
-nodeTagInput.addEventListener('keydown', (e) => {
+bindSidePanelField(nodeTagInput, 'keydown', (e) => {
   if (e.key !== 'Enter') return
   e.preventDefault()
   const tag = nodeTagInput.value.trim()
@@ -1165,7 +1432,7 @@ nodeTagInput.addEventListener('keydown', (e) => {
   updateSidePanel()
 })
 
-nodeTagsEl.addEventListener('click', (e) => {
+bindSidePanelField(nodeTagsEl, 'click', (e) => {
   const removeBtn = e.target.closest('.tag-remove')
   if (!removeBtn || !mindMap || activeNodes.length !== 1) return
   const index = parseInt(removeBtn.dataset.index)
@@ -1175,36 +1442,81 @@ nodeTagsEl.addEventListener('click', (e) => {
   updateSidePanel()
 })
 
-nodeShape.addEventListener('change', () => {
+bindSidePanelField(nodeShape, 'change', () => {
   if (!mindMap || activeNodes.length !== 1) return
   mindMap.execCommand('SET_NODE_SHAPE', activeNodes[0], nodeShape.value)
 })
 
-nodeColor.addEventListener('input', () => {
+bindSidePanelField(nodeColor, 'input', () => {
   if (!mindMap || activeNodes.length !== 1) return
-  mindMap.execCommand('SET_NODE_STYLE', activeNodes[0], 'color', nodeColor.value)
+  const color = formatColorWithOpacity(nodeColor.value, nodeColorOpacity.value)
+  mindMap.execCommand('SET_NODE_STYLE', activeNodes[0], 'color', color)
 })
 
-nodeBgColor.addEventListener('input', () => {
+bindSidePanelField(nodeColorOpacity, 'input', () => {
+  updateOpacityLabel(nodeColorOpacity)
   if (!mindMap || activeNodes.length !== 1) return
-  mindMap.execCommand('SET_NODE_STYLE', activeNodes[0], 'fillColor', nodeBgColor.value)
+  const color = formatColorWithOpacity(nodeColor.value, nodeColorOpacity.value)
+  mindMap.execCommand('SET_NODE_STYLE', activeNodes[0], 'color', color)
 })
 
-nodeFontSize.addEventListener('change', () => {
+bindSidePanelField(nodeBgColor, 'input', () => {
+  if (!mindMap || activeNodes.length !== 1) return
+  const color = formatColorWithOpacity(nodeBgColor.value, nodeBgOpacity.value, {
+    useTransparentAtZero: true,
+  })
+  mindMap.execCommand('SET_NODE_STYLE', activeNodes[0], 'fillColor', color)
+})
+
+bindSidePanelField(nodeBgOpacity, 'input', () => {
+  updateOpacityLabel(nodeBgOpacity)
+  if (!mindMap || activeNodes.length !== 1) return
+  const color = formatColorWithOpacity(nodeBgColor.value, nodeBgOpacity.value, {
+    useTransparentAtZero: true,
+  })
+  mindMap.execCommand('SET_NODE_STYLE', activeNodes[0], 'fillColor', color)
+})
+
+bindSidePanelField(nodeFontSize, 'change', () => {
   if (!mindMap || activeNodes.length !== 1) return
   mindMap.execCommand('SET_NODE_STYLE', activeNodes[0], 'fontSize', parseInt(nodeFontSize.value))
 })
 
-lineWidthInput.addEventListener('change', () => {
+bindSidePanelField(lineWidthInput, 'change', () => {
   setLineWidth(lineWidthInput.value)
 })
 
-lineWidthInput.addEventListener('input', () => {
+bindSidePanelField(lineWidthInput, 'input', () => {
   clearTimeout(sidePanelDebounce)
   sidePanelDebounce = setTimeout(() => {
     setLineWidth(lineWidthInput.value)
   }, 300)
 })
+
+canvasBgColor?.addEventListener('input', () => {
+  setCanvasBackgroundColor(canvasBgColor.value)
+})
+
+bindSidePanelField(themeSelect, 'change', () => {
+  applyTheme(themeSelect.value)
+})
+
+bindSidePanelField(rainbowLinesSelect, 'change', () => {
+  selectRainbowPreset(rainbowLinesSelect.value)
+})
+
+bindSidePanelField(layoutSelect, 'change', () => {
+  applyLayout(layoutSelect.value)
+})
+
+for (const tabButton of sidePanelTabs) {
+  tabButton.addEventListener('click', () => {
+    switchSidePanelTab(tabButton.dataset.panel)
+  })
+}
+
+resetNodeBtn?.addEventListener('click', resetNodePanelSettings)
+resetThemeBtn?.addEventListener('click', resetThemePanelSettings)
 
 // ===== Context Menu =====
 function onNodeContextMenu(e, node) {
@@ -1345,11 +1657,7 @@ function showCanvasContextMenu(x, y) {
   const layoutSubmenu = createSubmenu(
     getLayoutOptions().map((opt) => ({
       label: opt.label,
-      onClick: () => {
-        mindMap.setLayout(opt.value)
-        setCurrentLayout(opt.value)
-        syncDocumentFromMindMap()
-      },
+      onClick: () => applyLayout(opt.value),
     }))
   )
   layoutItem.appendChild(layoutSubmenu)
@@ -1365,9 +1673,16 @@ function showCanvasContextMenu(x, y) {
   themeItem.appendChild(themeSubmenu)
   contextMenuEl.appendChild(themeItem)
 
-  contextMenuEl.appendChild(createMenuItem(t('context.rainbowLines'), () => {
-    toggleRainbowLines()
-  }))
+  const rainbowItem = createMenuItem(t('context.rainbowLines'), null, true)
+  const rainbowSubmenu = createSubmenu([
+    { label: t('rainbow.off'), onClick: () => selectRainbowPreset('close') },
+    ...getRainbowLinePresets().map((preset) => ({
+      label: preset.label,
+      onClick: () => selectRainbowPreset(preset.id),
+    })),
+  ])
+  rainbowItem.appendChild(rainbowSubmenu)
+  contextMenuEl.appendChild(rainbowItem)
 
   contextMenuEl.appendChild(createSeparator())
 
@@ -1432,7 +1747,9 @@ function countNodes(node) {
 function applyLanguage(language) {
   setLocale(language)
   applyDomI18n()
-  renderThemeMenu()
+  renderThemeSelect()
+  renderLayoutSelect()
+  renderRainbowSelect()
   if (mindMap) {
     mindMap.updateConfig(getMindMapLocaleOptions())
     updateStatusBar()
@@ -1457,7 +1774,7 @@ window.addEventListener('message', (event) => {
         applyRainbowLinesConfig(fullData.rainbowLinesConfig)
         setCurrentLayout(fullData.layout || 'logicalStructure')
         setCurrentTheme((fullData.theme && fullData.theme.template) || 'default')
-        updateCanvasSettingsPanel()
+        updateThemePanel()
         updateStatusBar()
         requestAnimationFrame(() => hydrateAllFormulaNodes())
       } else {
@@ -1517,12 +1834,6 @@ window.addEventListener('resize', () => {
   }
   if (toolbar.exportMenu.classList.contains('show')) {
     positionExportMenu()
-  }
-  if (toolbar.layoutMenu.classList.contains('show')) {
-    positionDropdownMenu(toolbar.layoutMenu, toolbar.layoutBtn)
-  }
-  if (toolbar.themeMenu.classList.contains('show')) {
-    positionDropdownMenu(toolbar.themeMenu, toolbar.themeBtn)
   }
 })
 
