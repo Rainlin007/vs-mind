@@ -1,0 +1,204 @@
+{
+  "name": "vs-mind",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "1.0.4",
+  "publisher": "rainlin",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#252526",
+    "theme": "dark"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rainlin007/vs-mind.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Rainlin007/vs-mind/issues"
+  },
+  "homepage": "https://github.com/Rainlin007/vs-mind#readme",
+  "keywords": [
+    "mind map",
+    "mindmap",
+    "mind-map",
+    "brainstorm",
+    "diagram",
+    "visualization",
+    "json",
+    "vs mind"
+  ],
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "mindMap.editor",
+        "displayName": "%mindMap.editor.displayName%",
+        "selector": [
+          {
+            "filenamePattern": "*.smm"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "mindMap.newFile",
+        "title": "%mindMap.newFile.title%"
+      },
+      {
+        "command": "mindMap.exportPng",
+        "title": "%mindMap.exportPng.title%"
+      },
+      {
+        "command": "mindMap.exportSvg",
+        "title": "%mindMap.exportSvg.title%"
+      },
+      {
+        "command": "mindMap.exportJson",
+        "title": "%mindMap.exportJson.title%"
+      },
+      {
+        "command": "mindMap.fitCanvas",
+        "title": "%mindMap.fitCanvas.title%"
+      },
+      {
+        "command": "mindMap.zoomIn",
+        "title": "%mindMap.zoomIn.title%"
+      },
+      {
+        "command": "mindMap.zoomOut",
+        "title": "%mindMap.zoomOut.title%"
+      },
+      {
+        "command": "mindMap.expandAll",
+        "title": "%mindMap.expandAll.title%"
+      },
+      {
+        "command": "mindMap.collapseAll",
+        "title": "%mindMap.collapseAll.title%"
+      },
+      {
+        "command": "mindMap.search",
+        "title": "%mindMap.search.title%"
+      },
+      {
+        "command": "mindMap.openSource",
+        "title": "%mindMap.openSource.title%",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "mindMap.openMindBeside",
+        "title": "%mindMap.openMindBeside.title%",
+        "icon": "$(split-horizontal)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mindMap.openSource",
+          "when": "activeCustomEditorId == mindMap.editor",
+          "group": "navigation"
+        },
+        {
+          "command": "mindMap.openMindBeside",
+          "when": "resourceExtname == .smm && activeCustomEditorId != mindMap.editor",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "mindMap.search",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
+        "when": "activeCustomEditorId == mindMap.editor"
+      },
+      {
+        "command": "mindMap.exportPng",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "activeCustomEditorId == mindMap.editor"
+      }
+    ],
+    "configuration": {
+      "title": "%configuration.title%",
+      "properties": {
+        "mindMap.displayLanguage": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "en",
+            "zh-cn"
+          ],
+          "enumDescriptions": [
+            "%configuration.displayLanguage.auto%",
+            "%configuration.displayLanguage.en%",
+            "%configuration.displayLanguage.zh-cn%"
+          ],
+          "description": "%configuration.displayLanguage%"
+        },
+        "mindMap.defaultLayout": {
+          "type": "string",
+          "default": "logicalStructure",
+          "enum": [
+            "logicalStructure",
+            "logicalStructureLeft",
+            "mindMap",
+            "organizationStructure",
+            "catalogOrganization",
+            "timeline",
+            "fishbone"
+          ],
+          "enumDescriptions": [
+            "%configuration.defaultLayout.logicalStructure%",
+            "%configuration.defaultLayout.logicalStructureLeft%",
+            "%configuration.defaultLayout.mindMap%",
+            "%configuration.defaultLayout.organizationStructure%",
+            "%configuration.defaultLayout.catalogOrganization%",
+            "%configuration.defaultLayout.timeline%",
+            "%configuration.defaultLayout.fishbone%"
+          ],
+          "description": "%configuration.defaultLayout%"
+        },
+        "mindMap.defaultTheme": {
+          "type": "string",
+          "default": "default",
+          "description": "%configuration.defaultTheme%"
+        },
+        "mindMap.autoFit": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.autoFit%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "simple-mind-map": "^0.14.0",
+    "simple-mind-map-plugin-themes": "^1.0.1"
+  }
+}

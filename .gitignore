@@ -1,0 +1,5 @@
+node_modules/*
+dist/*
+*.vsix
+test.smm
+sample.png

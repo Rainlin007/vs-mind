@@ -1,0 +1,383 @@
+const MESSAGES = {
+  en: {
+    defaultRootTopic: 'Central Topic',
+    node: {
+      secondLevel: 'Sub Topic',
+      branchTopic: 'Branch Topic',
+    },
+    toolbar: {
+      undo: 'Undo (Ctrl+Z)',
+      redo: 'Redo (Ctrl+Y)',
+      addChild: 'Add Child Node (Tab)',
+      addSibling: 'Add Sibling Node (Enter)',
+      delete: 'Delete Node (Delete)',
+      painter: 'Format Painter',
+      rainbowLines: 'Rainbow Lines',
+      search: 'Search (Ctrl+F)',
+      layout: 'Layout',
+      theme: 'Theme',
+      zoomOut: 'Zoom Out',
+      zoomIn: 'Zoom In',
+      fit: 'Fit Canvas',
+      expandAll: 'Expand All',
+      collapseAll: 'Collapse All',
+      export: 'Export',
+      sidebar: 'Properties Panel',
+    },
+    theme: {
+      defaultGroup: 'Default',
+      default: 'Default',
+      lightGroup: 'Light Themes',
+      darkGroup: 'Dark Themes',
+    },
+    layout: {
+      logicalStructure: 'Logical',
+      logicalStructureLeft: 'Logical (L)',
+      mindMap: 'Mind Map',
+      organizationStructure: 'Org Chart',
+      catalogOrganization: 'Catalog',
+      timeline: 'Timeline',
+      fishbone: 'Fishbone',
+    },
+    panel: {
+      canvasSettings: 'Canvas',
+      lineWidth: 'Line Width',
+      nodeProperties: 'Node Properties',
+      text: 'Text',
+      note: 'Note',
+      hyperlink: 'Hyperlink',
+      linkTitle: 'Link Title',
+      tags: 'Tags',
+      shape: 'Shape',
+      style: 'Style',
+      fontColor: 'Font Color',
+      backgroundColor: 'Background',
+      fontSize: 'Font Size',
+      textPlaceholder: 'Node text',
+      notePlaceholder: 'Add a note...',
+      linkTitlePlaceholder: 'Link title',
+      tagPlaceholder: 'Type a tag and press Enter',
+    },
+    shape: {
+      default: 'Default',
+      rectangle: 'Rectangle',
+      roundedRectangle: 'Rounded Rectangle',
+      diamond: 'Diamond',
+      ellipse: 'Ellipse',
+      circle: 'Circle',
+      parallelogram: 'Parallelogram',
+      octagonalRectangle: 'Octagonal Rectangle',
+    },
+    search: {
+      placeholder: 'Search nodes...',
+      replacePlaceholder: 'Replace with...',
+      prev: 'Previous',
+      next: 'Next',
+      close: 'Close',
+      replace: 'Replace',
+      replaceAll: 'All',
+      results: '{count} results',
+    },
+    status: {
+      nodes: 'Nodes: {count}',
+      zoom: 'Zoom: {percent}%',
+      shortcuts: 'Tab: Child | Enter: Sibling | Delete: Remove | Ctrl+Z: Undo',
+    },
+    context: {
+      addChild: 'Add Child Node',
+      addSibling: 'Add Sibling Node',
+      addParent: 'Add Parent Node',
+      collapseChildren: 'Collapse Children',
+      expandChildren: 'Expand Children',
+      moveUp: 'Move Up',
+      moveDown: 'Move Down',
+      deleteNode: 'Delete Node',
+      addSummary: 'Add Summary',
+      nodeShape: 'Node Shape',
+      fitCanvas: 'Fit Canvas',
+      expandAll: 'Expand All',
+      collapseAll: 'Collapse All',
+      collapseToLevel1: 'Collapse to Level 1',
+      switchLayout: 'Switch Layout',
+      switchTheme: 'Switch Theme',
+      resetLayout: 'Reset Layout',
+      rainbowLines: 'Rainbow Lines',
+    },
+    error: {
+      initFailed: 'Failed to initialize mind map: {message}',
+      pngExportFailed: 'PNG export failed: {message}',
+      svgExportFailed: 'SVG export failed: {message}',
+    },
+  },
+  'zh-cn': {
+    defaultRootTopic: '中心主题',
+    node: {
+      secondLevel: '二级节点',
+      branchTopic: '分支主题',
+    },
+    toolbar: {
+      undo: '撤销 (Ctrl+Z)',
+      redo: '重做 (Ctrl+Y)',
+      addChild: '添加子节点 (Tab)',
+      addSibling: '添加同级节点 (Enter)',
+      delete: '删除节点 (Delete)',
+      painter: '格式刷',
+      rainbowLines: '彩虹线条',
+      search: '搜索 (Ctrl+F)',
+      layout: '布局',
+      theme: '主题',
+      zoomOut: '缩小',
+      zoomIn: '放大',
+      fit: '适应画布',
+      expandAll: '展开全部',
+      collapseAll: '收起全部',
+      export: '导出',
+      sidebar: '属性面板',
+    },
+    theme: {
+      defaultGroup: '默认',
+      default: '默认',
+      lightGroup: '浅色主题',
+      darkGroup: '深色主题',
+    },
+    layout: {
+      logicalStructure: '逻辑结构图',
+      logicalStructureLeft: '逻辑结构图(左)',
+      mindMap: '思维导图',
+      organizationStructure: '组织结构图',
+      catalogOrganization: '目录组织图',
+      timeline: '时间轴',
+      fishbone: '鱼骨图',
+    },
+    panel: {
+      canvasSettings: '画布',
+      lineWidth: '连线粗细',
+      nodeProperties: '节点属性',
+      text: '文本',
+      note: '备注',
+      hyperlink: '超链接',
+      linkTitle: '链接标题',
+      tags: '标签',
+      shape: '形状',
+      style: '样式',
+      fontColor: '字体颜色',
+      backgroundColor: '背景色',
+      fontSize: '字体大小',
+      textPlaceholder: '节点文本',
+      notePlaceholder: '添加备注...',
+      linkTitlePlaceholder: '链接标题',
+      tagPlaceholder: '输入标签，回车添加',
+    },
+    shape: {
+      default: '默认',
+      rectangle: '矩形',
+      roundedRectangle: '圆角矩形',
+      diamond: '菱形',
+      ellipse: '椭圆',
+      circle: '圆形',
+      parallelogram: '平行四边形',
+      octagonalRectangle: '八角矩形',
+    },
+    search: {
+      placeholder: '搜索节点...',
+      replacePlaceholder: '替换为...',
+      prev: '上一个',
+      next: '下一个',
+      close: '关闭',
+      replace: '替换',
+      replaceAll: '全部',
+      results: '{count} 结果',
+    },
+    status: {
+      nodes: '节点: {count}',
+      zoom: '缩放: {percent}%',
+      shortcuts: 'Tab: 子节点 | Enter: 同级 | Delete: 删除 | Ctrl+Z: 撤销',
+    },
+    context: {
+      addChild: '添加子节点',
+      addSibling: '添加同级节点',
+      addParent: '添加父节点',
+      collapseChildren: '收起子节点',
+      expandChildren: '展开子节点',
+      moveUp: '上移节点',
+      moveDown: '下移节点',
+      deleteNode: '删除节点',
+      addSummary: '添加概要',
+      nodeShape: '节点形状',
+      fitCanvas: '适应画布',
+      expandAll: '展开全部',
+      collapseAll: '收起全部',
+      collapseToLevel1: '收起到一级',
+      switchLayout: '切换布局',
+      switchTheme: '切换主题',
+      resetLayout: '重置布局',
+      rainbowLines: '彩虹线条',
+    },
+    error: {
+      initFailed: '思维导图初始化失败: {message}',
+      pngExportFailed: 'PNG 导出失败: {message}',
+      svgExportFailed: 'SVG 导出失败: {message}',
+    },
+  },
+}
+
+let locale = 'en'
+
+export function setLocale(language) {
+  const normalized = String(language || 'en').toLowerCase()
+  locale = normalized.startsWith('zh') ? 'zh-cn' : 'en'
+}
+
+export function getLocale() {
+  return locale
+}
+
+function getNestedValue(obj, path) {
+  return path.split('.').reduce((current, key) => current?.[key], obj)
+}
+
+export function t(key, vars = {}) {
+  const template =
+    getNestedValue(MESSAGES[locale], key) ??
+    getNestedValue(MESSAGES.en, key) ??
+    key
+  return template.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '')
+}
+
+const LAYOUT_VALUES = [
+  'logicalStructure',
+  'logicalStructureLeft',
+  'mindMap',
+  'organizationStructure',
+  'catalogOrganization',
+  'timeline',
+  'fishbone',
+]
+
+export function getMindMapLocaleOptions() {
+  return {
+    defaultInsertSecondLevelNodeText: t('node.secondLevel'),
+    defaultInsertBelowSecondLevelNodeText: t('node.branchTopic'),
+  }
+}
+
+export function getLayoutOptions() {
+  return LAYOUT_VALUES.map((value) => ({
+    value,
+    label: t(`layout.${value}`),
+  }))
+}
+
+const SHAPE_VALUES = [
+  '',
+  'rectangle',
+  'roundedRectangle',
+  'diamond',
+  'ellipse',
+  'circle',
+  'parallelogram',
+  'octagonalRectangle',
+]
+
+export function getShapeOptions() {
+  return SHAPE_VALUES.map((value) => ({
+    value,
+    label: value ? t(`shape.${value}`) : t('shape.default'),
+  }))
+}
+
+export function applyDomI18n() {
+  document.documentElement.lang = locale === 'zh-cn' ? 'zh-CN' : 'en'
+
+  const titles = {
+    'btn-undo': 'toolbar.undo',
+    'btn-redo': 'toolbar.redo',
+    'btn-add-child': 'toolbar.addChild',
+    'btn-add-sibling': 'toolbar.addSibling',
+    'btn-delete': 'toolbar.delete',
+    'btn-painter': 'toolbar.painter',
+    'btn-rainbow-lines': 'toolbar.rainbowLines',
+    'btn-search': 'toolbar.search',
+    'btn-layout': 'toolbar.layout',
+    'btn-theme': 'toolbar.theme',
+    'btn-zoom-out': 'toolbar.zoomOut',
+    'btn-zoom-in': 'toolbar.zoomIn',
+    'btn-fit': 'toolbar.fit',
+    'btn-expand-all': 'toolbar.expandAll',
+    'btn-collapse-all': 'toolbar.collapseAll',
+    'btn-export': 'toolbar.export',
+    'btn-sidebar-toggle': 'toolbar.sidebar',
+    'btn-search-prev': 'search.prev',
+    'btn-search-next': 'search.next',
+    'btn-search-close': 'search.close',
+    'btn-replace': 'search.replace',
+    'btn-replace-all': 'search.replaceAll',
+  }
+
+  for (const [id, key] of Object.entries(titles)) {
+    const el = document.getElementById(id)
+    if (el) el.title = t(key)
+  }
+
+  const labels = {
+    'panel-node-properties': 'panel.nodeProperties',
+    'label-canvas-settings': 'panel.canvasSettings',
+    'label-line-width': 'panel.lineWidth',
+    'label-node-text': 'panel.text',
+    'label-node-note': 'panel.note',
+    'label-node-link': 'panel.hyperlink',
+    'label-node-tags': 'panel.tags',
+    'label-node-shape': 'panel.shape',
+    'label-node-style': 'panel.style',
+    'label-node-color': 'panel.fontColor',
+    'label-node-bg-color': 'panel.backgroundColor',
+    'label-node-font-size': 'panel.fontSize',
+  }
+
+  for (const [id, key] of Object.entries(labels)) {
+    const el = document.getElementById(id)
+    if (el) el.textContent = t(key)
+  }
+
+  const placeholders = {
+    'node-text': 'panel.textPlaceholder',
+    'node-note': 'panel.notePlaceholder',
+    'node-link-title': 'panel.linkTitlePlaceholder',
+    'node-tag-input': 'panel.tagPlaceholder',
+    'search-input': 'search.placeholder',
+    'replace-input': 'search.replacePlaceholder',
+  }
+
+  for (const [id, key] of Object.entries(placeholders)) {
+    const el = document.getElementById(id)
+    if (el) el.placeholder = t(key)
+  }
+
+  document.querySelectorAll('#layout-menu .dropdown-item[data-layout]').forEach((item) => {
+    item.textContent = t(`layout.${item.dataset.layout}`)
+  })
+
+  const shapeSelect = document.getElementById('node-shape')
+  if (shapeSelect) {
+    getShapeOptions().forEach(({ value, label }) => {
+      const option = shapeSelect.querySelector(`option[value="${value}"]`)
+      if (option) option.textContent = label
+    })
+  }
+
+  const shortcuts = document.querySelector('.status-shortcuts')
+  if (shortcuts) shortcuts.textContent = t('status.shortcuts')
+
+  updateStatusBarI18n()
+}
+
+export function updateStatusBarI18n(nodeCount, zoomPercent) {
+  const statusNodes = document.getElementById('status-nodes')
+  const statusZoom = document.getElementById('status-zoom')
+  if (statusNodes && nodeCount !== undefined) {
+    statusNodes.textContent = t('status.nodes', { count: nodeCount })
+  }
+  if (statusZoom && zoomPercent !== undefined) {
+    statusZoom.textContent = t('status.zoom', { percent: zoomPercent })
+  }
+}
