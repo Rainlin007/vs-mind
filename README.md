@@ -51,7 +51,7 @@ code --install-extension vs-mind-1.0.2.vsix
 
 ## File Format
 
-Mind maps are saved as **JSON text files**.
+This extension opens **`.smm` files** — the [SMM mind-map format](smm/README.md) (UTF-8 JSON). The format is documented separately from this plugin; see [smm/SPEC.md](smm/SPEC.md) ( [中文](smm/SPEC.zh-CN.md) ).
 
 ```json
 {
@@ -166,6 +166,10 @@ MIT
 | `mindMap.defaultLayout` | `logicalStructure` | 新建导图默认布局 |
 | `mindMap.defaultTheme` | `default` | 新建导图默认主题 |
 | `mindMap.autoFit` | `true` | 打开思维导图时自动适应画布 |
+
+### 文件格式
+
+本扩展使用 **[SMM 思维导图格式](smm/README.md)**（`.smm`，UTF-8 JSON）。格式说明与插件文档分开维护，见 [smm/SPEC.zh-CN.md](smm/SPEC.zh-CN.md)（[English](smm/SPEC.md)）。
 
 ### 致谢
 

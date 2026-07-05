@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Rainlin007/vs-mind/smm/schema.json",
+  "title": "SMM Mind Map Document",
+  "description": "JSON schema for SMM (.smm) mind map files",
+  "type": "object",
+  "required": ["layout", "root", "theme"],
+  "additionalProperties": true,
+  "properties": {
+    "layout": {
+      "type": "string",
+      "description": "Canvas layout algorithm id",
+      "examples": [
+        "logicalStructure",
+        "logicalStructureLeft",
+        "mindMap",
+        "organizationStructure",
+        "catalogOrganization",
+        "timeline",
+        "fishbone"
+      ]
+    },
+    "root": { "$ref": "#/definitions/node" },
+    "theme": {
+      "type": "object",
+      "required": ["template", "config"],
+      "properties": {
+        "template": { "type": "string" },
+        "config": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "rainbowLinesConfig": {
+      "type": "object",
+      "properties": {
+        "open": { "type": "boolean" },
+        "colorsList": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "node": {
+      "type": "object",
+      "required": ["data", "children"],
+      "properties": {
+        "data": { "$ref": "#/definitions/nodeData" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/node" }
+        },
+        "smmVersion": {
+          "type": "string",
+          "description": "Producer library version"
+        }
+      },
+      "additionalProperties": true
+    },
+    "nodeData": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "expand": { "type": "boolean" },
+        "uid": { "type": "string" },
+        "richText": { "type": "boolean" },
+        "note": { "type": "string" },
+        "hyperlink": { "type": "string" },
+        "hyperlinkTitle": { "type": "string" },
+        "tag": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "icon": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "image": { "type": "string" },
+        "imageTitle": { "type": "string" },
+        "imageSize": {
+          "type": "object",
+          "properties": {
+            "width": { "type": "number" },
+            "height": { "type": "number" }
+          }
+        },
+        "shape": { "type": "string" },
+        "fillColor": { "type": "string" },
+        "color": { "type": "string" },
+        "fontSize": { "type": "number" },
+        "fontWeight": { "type": "string" },
+        "fontStyle": { "type": "string" },
+        "borderColor": { "type": "string" },
+        "borderWidth": { "type": "number" },
+        "gradientStyle": { "type": "boolean" },
+        "startColor": { "type": "string" },
+        "endColor": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}
