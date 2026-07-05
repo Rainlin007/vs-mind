@@ -2,6 +2,11 @@
 
 All notable changes to **VS Mind** are documented in this file.
 
+## [1.0.5] - 2026-07-05
+
+### Changed
+- Update Marketplace listing with real editor screenshot and README copy
+
 ## [1.0.4] - 2026-07-05
 
 ### Fixed
