@@ -564,15 +564,17 @@ function shouldEnableMindMapShortcut(e) {
   return false
 }
 
+function releaseMindMapShortcutsIfSafe() {
+  if (!mindMap?.keyCommand) return
+  if (isInsideShortcutGuard(document.activeElement)) return
+  mindMap.keyCommand.recovery()
+}
+
 function bindShortcutGuards() {
   ;[sidePanel, searchPanel, formulaDialogEl].filter(Boolean).forEach((root) => {
-    root.addEventListener('focusin', () => {
-      mindMap?.keyCommand?.pause()
-    })
-    root.addEventListener('focusout', (e) => {
-      if (!isInsideShortcutGuard(e.relatedTarget)) {
-        mindMap?.keyCommand?.recovery()
-      }
+    root.addEventListener('focusout', () => {
+      // relatedTarget is often null when clicking the canvas; defer to activeElement
+      setTimeout(() => releaseMindMapShortcutsIfSafe(), 0)
     })
   })
 }
@@ -691,7 +693,6 @@ function bindMindMapEvents() {
   mindMap.on('node_active', onNodeActive)
   mindMap.on('node_contextmenu', onNodeContextMenu)
   mindMap.on('before_show_text_edit', () => {
-    mindMap.keyCommand.pause()
     const node = mindMap.richText?.node
     if (node && document.activeElement !== nodeText) {
       const plain = getPlainTextForNode(node)
@@ -707,15 +708,19 @@ function bindMindMapEvents() {
     }, 100)
   })
   mindMap.on('hide_text_edit', (_el, nodes) => {
-    if (!isInsideShortcutGuard(document.activeElement)) {
+    // Inline edit ends while focus may still be on .ql-editor; always unpause.
+    requestAnimationFrame(() => {
       mindMap.keyCommand.recovery()
-    }
+    })
     syncTextInputFromNodes(nodes)
     if (activeNodes.length === 1) {
       syncNodeTextInputField(true)
     }
   })
-  mindMap.on('draw_click', hideContextMenu)
+  mindMap.on('draw_click', () => {
+    hideContextMenu()
+    releaseMindMapShortcutsIfSafe()
+  })
   mindMap.on('expand_btn_click', updateStatusBar)
 
   mindMap.on('search_info_change', (data) => {
