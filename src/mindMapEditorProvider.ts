@@ -190,6 +190,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
     let isUpdatingFromWebview = false
 
     const config = vscode.workspace.getConfiguration('mindMap')
+    const webviewConfig = this.getWebviewConfig(webview, config)
 
     await this.seedDocumentIfNeeded(document)
 
@@ -203,12 +204,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
       webview.postMessage({
         type: 'init',
         data,
-        config: {
-          autoFit: config.get<boolean>('autoFit', true),
-          defaultLayout: config.get<string>('defaultLayout', 'logicalStructure'),
-          defaultTheme: config.get<string>('defaultTheme', 'default'),
-          language: resolveDisplayLanguage(),
-        },
+        config: webviewConfig,
       })
     }
 
@@ -328,6 +324,22 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
     })
   }
 
+  private getWebviewConfig(
+    webview: vscode.Webview,
+    config: vscode.WorkspaceConfiguration
+  ) {
+    const katexUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'katex')
+    )
+    return {
+      autoFit: config.get<boolean>('autoFit', true),
+      defaultLayout: config.get<string>('defaultLayout', 'logicalStructure'),
+      defaultTheme: config.get<string>('defaultTheme', 'default'),
+      language: resolveDisplayLanguage(),
+      katexFontPath: `${katexUri.toString()}/`,
+    }
+  }
+
   private getHtmlForWebview(webview: vscode.Webview): string {
     const mediaPath = vscode.Uri.joinPath(this.context.extensionUri, 'media')
     const distPath = vscode.Uri.joinPath(this.context.extensionUri, 'dist')
@@ -338,6 +350,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
     const editorUri = webview.asWebviewUri(
       vscode.Uri.joinPath(distPath, 'editor.js')
     )
+    const version = this.context.extension.packageJSON.version ?? '0'
     const cspSource = webview.cspSource
 
     const htmlPath = vscode.Uri.joinPath(mediaPath, 'editor.html')
@@ -346,7 +359,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
     html = html
       .replace(/\{\{cspSource\}\}/g, cspSource)
       .replace(/\{\{cssUri\}\}/g, cssUri.toString())
-      .replace(/\{\{editorUri\}\}/g, editorUri.toString())
+      .replace(/\{\{editorUri\}\}/g, `${editorUri}?v=${version}`)
 
     return html
   }

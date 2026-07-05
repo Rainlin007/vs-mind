@@ -129,7 +129,7 @@
   <div id="mainContent" class="main-content">
     <div id="mindMapContainer" class="mind-map-container"></div>
 
-    <div id="sidePanel" class="side-panel hidden">
+    <div id="sidePanel" class="side-panel">
       <div class="side-panel-header">
         <span id="panel-node-properties">Node Properties</span>
         <button id="btn-close-panel" class="panel-close-btn">&times;</button>
@@ -145,7 +145,7 @@
         <div class="panel-divider"></div>
         <div class="panel-section">
           <label id="label-node-text" class="panel-label" for="node-text">Text</label>
-          <textarea id="node-text" class="panel-textarea" rows="2" placeholder="Node text"></textarea>
+          <textarea id="node-text" class="panel-textarea" rows="3" placeholder="Node text"></textarea>
         </div>
         <div class="panel-section">
           <label id="label-node-note" class="panel-label" for="node-note">Note</label>
@@ -216,6 +216,19 @@
   </div>
 
   <div id="contextMenu" class="context-menu" style="display:none;"></div>
+
+  <!-- Formula input dialog -->
+  <div id="formulaDialog" class="formula-dialog hidden">
+    <div class="formula-dialog-panel">
+      <div id="formula-dialog-title" class="formula-dialog-title">Insert Formula</div>
+      <div id="formula-dialog-hint" class="formula-dialog-hint">LaTeX syntax, e.g. e=mc^2 or \frac{a}{b}</div>
+      <input id="formula-input" class="formula-input" type="text" spellcheck="false" autocomplete="off">
+      <div class="formula-dialog-actions">
+        <button type="button" id="formula-cancel" class="formula-btn formula-btn-secondary">Cancel</button>
+        <button type="button" id="formula-confirm" class="formula-btn formula-btn-primary">Insert</button>
+      </div>
+    </div>
+  </div>
 
   <div id="statusBar" class="status-bar">
     <span id="status-nodes">Nodes: 0</span>

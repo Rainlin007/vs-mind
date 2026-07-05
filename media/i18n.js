@@ -54,7 +54,7 @@ const MESSAGES = {
       fontColor: 'Font Color',
       backgroundColor: 'Background',
       fontSize: 'Font Size',
-      textPlaceholder: 'Node text',
+      textPlaceholder: 'Double-click node to edit, or edit here ($...$ for formula)',
       notePlaceholder: 'Add a note...',
       commentPlaceholder: 'Not shown on the map — for your notes or AI',
       linkTitlePlaceholder: 'Link title',
@@ -83,7 +83,18 @@ const MESSAGES = {
     status: {
       nodes: 'Nodes: {count}',
       zoom: 'Zoom: {percent}%',
-      shortcuts: 'Tab: Child | Enter: Sibling | Delete: Remove | Ctrl+Z: Undo',
+      shortcuts: 'Click: Select | Dbl-click: Edit | Delete: Remove | $...$: Formula',
+    },
+    formula: {
+      dialogTitle: 'Insert Formula',
+      dialogHint: 'LaTeX syntax, e.g. e=mc^2 or \\frac{a}{b}. Type $...$ in the side panel text field.',
+      insert: 'Insert',
+      cancel: 'Cancel',
+      bold: 'Bold',
+      italic: 'Italic',
+      underline: 'Underline',
+      strike: 'Strikethrough',
+      toolbar: 'Formula',
     },
     context: {
       addChild: 'Add Child Node',
@@ -94,6 +105,7 @@ const MESSAGES = {
       moveUp: 'Move Up',
       moveDown: 'Move Down',
       deleteNode: 'Delete Node',
+      insertFormula: 'Insert Formula',
       addSummary: 'Add Summary',
       nodeShape: 'Node Shape',
       fitCanvas: 'Fit Canvas',
@@ -166,7 +178,7 @@ const MESSAGES = {
       fontColor: '字体颜色',
       backgroundColor: '背景色',
       fontSize: '字体大小',
-      textPlaceholder: '节点文本',
+      textPlaceholder: '双击节点编辑，或在此输入（$...$ 为公式）',
       notePlaceholder: '添加备注...',
       commentPlaceholder: '不在导图显示，可自用或供 AI 阅读',
       linkTitlePlaceholder: '链接标题',
@@ -195,7 +207,18 @@ const MESSAGES = {
     status: {
       nodes: '节点: {count}',
       zoom: '缩放: {percent}%',
-      shortcuts: 'Tab: 子节点 | Enter: 同级 | Delete: 删除 | Ctrl+Z: 撤销',
+      shortcuts: '单击: 选中 | 双击: 编辑 | Delete: 删除 | $...$: 公式',
+    },
+    formula: {
+      dialogTitle: '插入公式',
+      dialogHint: 'LaTeX 语法，如 e=mc^2 或 \\frac{a}{b}。在侧栏文本框输入 $...$ 即可。',
+      insert: '插入',
+      cancel: '取消',
+      bold: '粗体',
+      italic: '斜体',
+      underline: '下划线',
+      strike: '删除线',
+      toolbar: '公式',
     },
     context: {
       addChild: '添加子节点',
@@ -206,6 +229,7 @@ const MESSAGES = {
       moveUp: '上移节点',
       moveDown: '下移节点',
       deleteNode: '删除节点',
+      insertFormula: '插入公式',
       addSummary: '添加概要',
       nodeShape: '节点形状',
       fitCanvas: '适应画布',
@@ -317,6 +341,15 @@ export function applyDomI18n() {
     'btn-replace': 'search.replace',
     'btn-replace-all': 'search.replaceAll',
   }
+
+  const formulaTitle = document.getElementById('formula-dialog-title')
+  if (formulaTitle) formulaTitle.textContent = t('formula.dialogTitle')
+  const formulaHint = document.getElementById('formula-dialog-hint')
+  if (formulaHint) formulaHint.textContent = t('formula.dialogHint')
+  const formulaConfirm = document.getElementById('formula-confirm')
+  if (formulaConfirm) formulaConfirm.textContent = t('formula.insert')
+  const formulaCancel = document.getElementById('formula-cancel')
+  if (formulaCancel) formulaCancel.textContent = t('formula.cancel')
 
   for (const [id, key] of Object.entries(titles)) {
     const el = document.getElementById(id)

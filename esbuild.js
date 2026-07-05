@@ -1,7 +1,21 @@
 const esbuild = require('esbuild')
+const fs = require('fs')
 const path = require('path')
 
 const isWatch = process.argv.includes('--watch')
+
+function copyKatexFonts() {
+  const srcDir = path.resolve(__dirname, 'node_modules/katex/dist/fonts')
+  const destDir = path.resolve(__dirname, 'media/katex/fonts')
+  if (!fs.existsSync(srcDir)) {
+    console.warn('KaTeX fonts not found; run npm install first.')
+    return
+  }
+  fs.mkdirSync(destDir, { recursive: true })
+  for (const file of fs.readdirSync(srcDir)) {
+    fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file))
+  }
+}
 
 const extensionConfig = {
   entryPoints: [path.resolve(__dirname, 'src/extension.ts')],
@@ -29,6 +43,7 @@ const webviewConfig = {
 }
 
 async function build() {
+  copyKatexFonts()
   if (isWatch) {
     const ctx1 = await esbuild.context(extensionConfig)
     const ctx2 = await esbuild.context(webviewConfig)

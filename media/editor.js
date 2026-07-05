@@ -3,6 +3,7 @@ import Drag from 'simple-mind-map/src/plugins/Drag.js'
 import Select from 'simple-mind-map/src/plugins/Select.js'
 import KeyboardNavigation from 'simple-mind-map/src/plugins/KeyboardNavigation.js'
 import RichText from 'simple-mind-map/src/plugins/RichText.js'
+import Formula from 'simple-mind-map/src/plugins/Formula.js'
 import Export from 'simple-mind-map/src/plugins/Export.js'
 import Search from 'simple-mind-map/src/plugins/Search.js'
 import NodeImgAdjust from 'simple-mind-map/src/plugins/NodeImgAdjust.js'
@@ -27,6 +28,7 @@ MindMap.usePlugin(Drag)
   .usePlugin(Select)
   .usePlugin(KeyboardNavigation)
   .usePlugin(RichText)
+  .usePlugin(Formula)
   .usePlugin(Export)
   .usePlugin(Search)
   .usePlugin(NodeImgAdjust)
@@ -276,6 +278,307 @@ const nodeBgColor = $('node-bg-color')
 const nodeFontSize = $('node-font-size')
 const lineWidthInput = $('line-width')
 
+// Formula dialog
+const formulaDialogEl = $('formulaDialog')
+const formulaInputEl = $('formula-input')
+const formulaConfirmBtn = $('formula-confirm')
+const formulaCancelBtn = $('formula-cancel')
+let formulaDialogCallback = null
+
+function htmlEscapeText(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function htmlEscapeAttr(text) {
+  return htmlEscapeText(text)
+}
+
+function extractPlainTextFromRichHtml(html) {
+  if (!html) return ''
+  const tmp = document.createElement('div')
+  tmp.innerHTML = html
+  tmp.querySelectorAll('.ql-formula').forEach((el) => {
+    const value = el.getAttribute('data-value')
+    if (value) {
+      el.replaceWith(document.createTextNode(`$${decodeHtmlEntities(value)}$`))
+      return
+    }
+    const annotation = el.querySelector('annotation')
+    if (annotation?.textContent) {
+      el.replaceWith(document.createTextNode(`$${annotation.textContent.trim()}$`))
+    }
+  })
+
+  const paragraphs = Array.from(tmp.querySelectorAll('p'))
+  if (paragraphs.length) {
+    return paragraphs.map((p) => p.textContent || '').join('\n').replace(/\n$/, '')
+  }
+  return (tmp.textContent || '').replace(/\n$/, '')
+}
+
+function convertRichHtmlToPlainSource(html) {
+  if (!html) return ''
+  let sourceHtml = html
+  if (mindMap?.formula?.latexRichToText) {
+    sourceHtml = mindMap.formula.latexRichToText(sourceHtml)
+  }
+  return extractPlainTextFromRichHtml(sourceHtml)
+}
+
+function getPlainTextForNode(node) {
+  if (!node) return ''
+  const data = node.getData()
+  if (!data?.text) return ''
+  if (!data.richText) return data.text
+  return convertRichHtmlToPlainSource(data.text)
+}
+
+function syncNodeTextInputField(force = false) {
+  if (!force && document.activeElement === nodeText) return
+  if (activeNodes.length !== 1) {
+    nodeText.value = ''
+    return
+  }
+  const node = activeNodes[0]
+  const text = getPlainTextForNode(node)
+  nodeText.value = text
+  mindMap?.execCommand('SET_NODE_DATA', node, { textInput: text })
+}
+
+function renderFormulaSpan(latex) {
+  const span = document.createElement('span')
+  span.className = 'ql-formula'
+  span.setAttribute('data-value', htmlEscapeAttr(latex))
+  if (window.katex) {
+    window.katex.render(latex, span, getKatexRenderConfig())
+  }
+  return span.outerHTML
+}
+
+function processPlainLine(line) {
+  const parts = String(line).split(/(\$.+?\$)/g)
+  let inner = ''
+  for (const part of parts) {
+    if (!part) continue
+    if (/^\$.+?\$$/.test(part)) {
+      const latex = part.slice(1, -1).trim()
+      if (latex && mindMap?.formula?.checkFormulaIsLegal(latex)) {
+        inner += renderFormulaSpan(latex)
+      } else {
+        inner += htmlEscapeText(part)
+      }
+    } else {
+      inner += htmlEscapeText(part)
+    }
+  }
+  return inner || '<br>'
+}
+
+function buildRichTextHtmlFromPlainInput(text) {
+  const lines = String(text ?? '').split('\n')
+  if (!lines.length) return '<p><br></p>'
+  return lines.map((line) => `<p>${processPlainLine(line)}</p>`).join('')
+}
+
+function applySidePanelNodeText(node, text) {
+  if (!mindMap || !node) return
+  const source = String(text ?? '')
+  const html = buildRichTextHtmlFromPlainInput(source)
+  mindMap.execCommand('SET_NODE_TEXT', node, html, true, true)
+  mindMap.execCommand('SET_NODE_DATA', node, { textInput: source })
+}
+
+function showSidePanelForEditing(focusText = true) {
+  sidePanel.classList.remove('hidden')
+  toolbar.sidebarToggle.classList.add('active')
+  if (focusText) {
+    nodeText.focus()
+    const len = nodeText.value.length
+    nodeText.setSelectionRange(len, len)
+  }
+}
+
+function insertFormulaToNode(node, latex) {
+  const trimmed = latex?.trim()
+  if (!trimmed || !mindMap?.formula || !node) return
+  if (!mindMap.formula.checkFormulaIsLegal(trimmed)) return
+
+  const current = getPlainTextForNode(node)
+  const spacer = current && !/\s$/.test(current) ? ' ' : ''
+  const newText = `${current}${spacer}$${trimmed}$`
+  applySidePanelNodeText(node, newText)
+
+  if (activeNodes.length === 1 && activeNodes[0] === node) {
+    nodeText.value = newText
+  }
+  showSidePanelForEditing(true)
+}
+
+function getKatexRenderConfig() {
+  return mindMap?.formula?.config || {
+    throwOnError: false,
+    errorColor: '#f00',
+    output: 'html',
+  }
+}
+
+function decodeHtmlEntities(value) {
+  const el = document.createElement('textarea')
+  el.innerHTML = value
+  return el.value
+}
+
+function hydrateFormulaHtml(html) {
+  if (!html || typeof html !== 'string' || !html.includes('ql-formula') || !window.katex) {
+    return html
+  }
+
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  let changed = false
+
+  doc.querySelectorAll('.ql-formula').forEach((el) => {
+    const rawValue = el.getAttribute('data-value')
+    if (!rawValue) return
+
+    const hasRenderedContent = el.querySelector('.katex-html, .katex-mathml, math')
+    if (hasRenderedContent && el.textContent.trim()) return
+
+    const value = decodeHtmlEntities(rawValue)
+    el.innerHTML = ''
+    window.katex.render(value, el, getKatexRenderConfig())
+    changed = true
+  })
+
+  return changed ? doc.body.innerHTML : html
+}
+
+function walkMindMapNodes(node, fn) {
+  if (!node) return
+  fn(node)
+  if (Array.isArray(node.children)) {
+    node.children.forEach((child) => walkMindMapNodes(child, fn))
+  }
+}
+
+function hydrateAllFormulaNodes() {
+  if (!mindMap?.renderer?.root) return false
+
+  let changed = false
+  walkMindMapNodes(mindMap.renderer.root, (node) => {
+    const data = node.getData()
+    if (!data?.richText || !data.text?.includes?.('ql-formula')) return
+    const fixed = hydrateFormulaHtml(data.text)
+    if (fixed !== data.text) {
+      node.setData({ text: fixed, resetRichText: true })
+      changed = true
+    }
+  })
+
+  if (changed) mindMap.render()
+  return changed
+}
+
+function showFormulaDialog(onConfirm) {
+  if (!formulaDialogEl || !formulaInputEl) return
+  formulaDialogCallback = onConfirm
+  formulaInputEl.value = ''
+  formulaDialogEl.classList.remove('hidden')
+  formulaInputEl.focus()
+}
+
+function hideFormulaDialog() {
+  if (!formulaDialogEl) return
+  formulaDialogEl.classList.add('hidden')
+  formulaInputEl.value = ''
+  formulaDialogCallback = null
+}
+
+function confirmFormulaDialog() {
+  const latex = formulaInputEl?.value?.trim()
+  if (!latex) {
+    formulaInputEl?.focus()
+    return
+  }
+  const callback = formulaDialogCallback
+  hideFormulaDialog()
+  callback?.(latex)
+}
+
+function initFormulaUi() {
+  formulaConfirmBtn?.addEventListener('click', (e) => {
+    e.preventDefault()
+    confirmFormulaDialog()
+  })
+
+  formulaCancelBtn?.addEventListener('click', (e) => {
+    e.preventDefault()
+    hideFormulaDialog()
+  })
+
+  formulaDialogEl?.addEventListener('click', (e) => {
+    if (e.target === formulaDialogEl) hideFormulaDialog()
+  })
+
+  formulaInputEl?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      confirmFormulaDialog()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      hideFormulaDialog()
+    }
+  })
+}
+
+initFormulaUi()
+
+const SHORTCUT_GUARD_SELECTOR =
+  '#sidePanel, #searchPanel, #formulaDialog, .formula-dialog-panel, .ql-editor, .ql-container, .smm-richtext-node-edit-wrap, .smm-node-edit-wrap'
+
+function getShortcutEventElement(e) {
+  if (e?.target instanceof HTMLElement) return e.target
+  if (document.activeElement instanceof HTMLElement) return document.activeElement
+  return null
+}
+
+function isInsideShortcutGuard(el) {
+  return el instanceof HTMLElement && !!el.closest(SHORTCUT_GUARD_SELECTOR)
+}
+
+function shouldEnableMindMapShortcut(e) {
+  const el = getShortcutEventElement(e)
+  if (!el) return false
+  if (isInsideShortcutGuard(el)) return false
+  if (el.matches('input, textarea, select')) return false
+
+  if (el === document.body) return true
+
+  const editClasses = mindMap?.editNodeClassList || []
+  for (const cls of editClasses) {
+    if (el.classList.contains(cls)) return true
+  }
+  return false
+}
+
+function bindShortcutGuards() {
+  ;[sidePanel, searchPanel, formulaDialogEl].filter(Boolean).forEach((root) => {
+    root.addEventListener('focusin', () => {
+      mindMap?.keyCommand?.pause()
+    })
+    root.addEventListener('focusout', (e) => {
+      if (!isInsideShortcutGuard(e.relatedTarget)) {
+        mindMap?.keyCommand?.recovery()
+      }
+    })
+  })
+}
+
+bindShortcutGuards()
+
 // ===== Mind Map Init =====
 function initMindMap(data, config) {
   const container = $('mindMapContainer')
@@ -308,7 +611,12 @@ function initMindMap(data, config) {
         fit: shouldFit,
         readonly: false,
         enableShortcutOnlyWhenMouseInSvg: false,
+        customCheckEnableShortcut: shouldEnableMindMapShortcut,
+        enableAutoEnterTextEditWhenKeydown: false,
         openRealtimeRenderOnNodeTextEdit: true,
+        enableEditFormulaInRichTextEdit: true,
+        katexFontPath: config?.katexFontPath || '',
+        getKatexOutputType: () => 'html',
         scaleRatio: 0.06,
         ...getMindMapLocaleOptions(),
         errorHandler: (code, err) => {
@@ -344,6 +652,7 @@ function initMindMap(data, config) {
     patchDragDropPreview()
     updateStatusBar()
     updateCanvasSettingsPanel()
+    requestAnimationFrame(() => hydrateAllFormulaNodes())
 
     // Record the initial state so we don't trigger false dirty
     setTimeout(() => {
@@ -373,16 +682,42 @@ function patchDragDropPreview() {
   }
 }
 
+let inlineEditSidePanelTimer = null
+
 function bindMindMapEvents() {
   mindMap.on('data_change', onDataChange)
   mindMap.on('view_data_change', onViewChange)
   mindMap.on('scale', onScaleChange)
   mindMap.on('node_active', onNodeActive)
   mindMap.on('node_contextmenu', onNodeContextMenu)
+  mindMap.on('before_show_text_edit', () => {
+    mindMap.keyCommand.pause()
+    const node = mindMap.richText?.node
+    if (node && document.activeElement !== nodeText) {
+      const plain = getPlainTextForNode(node)
+      nodeText.value = plain
+    }
+  })
+  mindMap.on('node_text_edit_change', ({ node, text, richText }) => {
+    if (!richText || document.activeElement === nodeText) return
+    if (activeNodes.length !== 1 || activeNodes[0] !== node) return
+    clearTimeout(inlineEditSidePanelTimer)
+    inlineEditSidePanelTimer = setTimeout(() => {
+      nodeText.value = convertRichHtmlToPlainSource(text)
+    }, 100)
+  })
+  mindMap.on('hide_text_edit', (_el, nodes) => {
+    if (!isInsideShortcutGuard(document.activeElement)) {
+      mindMap.keyCommand.recovery()
+    }
+    syncTextInputFromNodes(nodes)
+    if (activeNodes.length === 1) {
+      syncNodeTextInputField(true)
+    }
+  })
   mindMap.on('draw_click', hideContextMenu)
   mindMap.on('expand_btn_click', updateStatusBar)
 
-  // Search events
   mindMap.on('search_info_change', (data) => {
     if (data) {
       searchCount.textContent = data.currentIndex > -1
@@ -436,9 +771,24 @@ function onScaleChange(scale) {
   updateStatusBarI18n(undefined, pct)
 }
 
+function syncTextInputFromNodes(nodes) {
+  if (!mindMap || !nodes?.length) return
+  nodes.forEach((node) => {
+    mindMap.execCommand('SET_NODE_DATA', node, {
+      textInput: getPlainTextForNode(node),
+    })
+  })
+}
+
 function onNodeActive(node, activeNodeList) {
+  if (document.activeElement === nodeText && activeNodes.length === 1) {
+    applySidePanelNodeText(activeNodes[0], nodeText.value)
+  }
   activeNodes = activeNodeList || []
   updateSidePanel()
+  if (document.activeElement === nodeText) {
+    nodeText.blur()
+  }
 }
 
 // ===== Toolbar Actions =====
@@ -712,7 +1062,7 @@ function updateSidePanel() {
   const node = activeNodes[0]
   const data = node.getData()
 
-  nodeText.value = data.text || ''
+  syncNodeTextInputField()
   nodeNote.value = data.note || ''
   nodeComment.value = data.comment || ''
   nodeLink.value = data.hyperlink || ''
@@ -748,8 +1098,14 @@ nodeText.addEventListener('input', () => {
   if (!mindMap || activeNodes.length !== 1) return
   clearTimeout(sidePanelDebounce)
   sidePanelDebounce = setTimeout(() => {
-    mindMap.execCommand('SET_NODE_TEXT', activeNodes[0], nodeText.value)
+    applySidePanelNodeText(activeNodes[0], nodeText.value)
   }, 300)
+})
+
+nodeText.addEventListener('blur', () => {
+  if (!mindMap || activeNodes.length !== 1) return
+  clearTimeout(sidePanelDebounce)
+  applySidePanelNodeText(activeNodes[0], nodeText.value)
 })
 
 nodeNote.addEventListener('input', () => {
@@ -919,6 +1275,10 @@ function showNodeContextMenu(x, y, node) {
 
   contextMenuEl.appendChild(createSeparator())
 
+  contextMenuEl.appendChild(createMenuItem(t('context.insertFormula'), () => {
+    showFormulaDialog((latex) => insertFormulaToNode(node, latex))
+  }))
+
   contextMenuEl.appendChild(createMenuItem(t('context.addSummary'), () => {
     mindMap.execCommand('ADD_GENERALIZATION')
   }))
@@ -1079,6 +1439,7 @@ window.addEventListener('message', (event) => {
         setCurrentTheme((fullData.theme && fullData.theme.template) || 'default')
         updateCanvasSettingsPanel()
         updateStatusBar()
+        requestAnimationFrame(() => hydrateAllFormulaNodes())
       } else {
         initMindMap(fullData, message.config)
       }
@@ -1155,4 +1516,5 @@ document.addEventListener('keydown', (e) => {
 })
 
 // ===== Init =====
+toolbar.sidebarToggle.classList.add('active')
 vscode.postMessage({ type: 'ready' })
