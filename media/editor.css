@@ -182,6 +182,18 @@ html, body {
   overflow: hidden;
   min-height: 0;
   background: var(--vscode-editor-background, #1e1e1e);
+  position: relative;
+}
+
+.bg-pattern-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  background-repeat: repeat;
 }
 
 /* ===== Side Panel ===== */

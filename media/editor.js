@@ -48,8 +48,11 @@ const vscode = acquireVsCodeApi()
 const DEFAULT_MIND_MAP_DATA = {
   layout: 'logicalStructure',
   root: { data: { text: '', expand: true }, children: [] },
-  theme: { template: 'default', config: {} },
+  theme: { template: 'earthYellow', config: { lineWidth: 3, generalizationLineWidth: 3 } },
   rainbowLinesConfig: { open: false, colorsList: [] },
+  backgroundPattern: 'grid',
+  bgPatternColor: '#808080',
+  bgPatternOpacity: 10,
 }
 
 function getRainbowLinesConfig(data) {
@@ -121,6 +124,11 @@ function normalizeMindMapData(data) {
         config: normalizeThemeConfig(theme.config),
       },
       rainbowLinesConfig: getRainbowLinesConfig(data),
+      ...(data.backgroundPattern ? {
+        backgroundPattern: data.backgroundPattern,
+        bgPatternColor: data.bgPatternColor || '#808080',
+        bgPatternOpacity: data.bgPatternOpacity ?? 10,
+      } : {}),
       ...(isValidView(data.view) ? { view: data.view } : {}),
     }
   }
@@ -229,13 +237,19 @@ function syncDocumentFromMindMap() {
 function getDocumentData() {
   const { view, ...content } = mindMap.getData(true)
   const { rainbowLinesConfig } = mindMap.opt
-  return {
+  const data = {
     ...content,
     rainbowLinesConfig: {
       open: !!(rainbowLinesConfig && rainbowLinesConfig.open),
       colorsList: rainbowLinesConfig?.colorsList || [],
     },
   }
+  if (currentBgPattern && currentBgPattern !== 'none') {
+    data.backgroundPattern = currentBgPattern
+    data.bgPatternColor = currentBgPatternColor
+    data.bgPatternOpacity = currentBgPatternOpacity
+  }
+  return data
 }
 
 function setRainbowLinesState(config) {
@@ -308,6 +322,66 @@ function selectRainbowPreset(presetId) {
   syncDocumentFromMindMap()
 }
 
+// ===== Background Pattern =====
+function hexToRgb(hex) {
+  const n = parseInt(hex.replace('#', ''), 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+function applyBackgroundPattern() {
+  const overlay = document.getElementById('bgPatternOverlay')
+  if (!overlay) return
+  const pattern = currentBgPattern
+  if (!pattern || pattern === 'none') {
+    overlay.style.backgroundImage = 'none'
+    overlay.style.backgroundSize = ''
+    return
+  }
+  const [r, g, b] = hexToRgb(currentBgPatternColor)
+  const a = currentBgPatternOpacity / 100
+  const c = `rgba(${r},${g},${b},${a})`
+  const styles = {
+    dots: {
+      backgroundImage: `radial-gradient(circle, ${c} 1px, transparent 1px)`,
+      backgroundSize: '20px 20px'
+    },
+    grid: {
+      backgroundImage: `linear-gradient(${c} 1px, transparent 1px), linear-gradient(90deg, ${c} 1px, transparent 1px)`,
+      backgroundSize: '24px 24px'
+    },
+    linesHorizontal: {
+      backgroundImage: `linear-gradient(${c} 1px, transparent 1px)`,
+      backgroundSize: '10px 16px'
+    },
+    diagonal: {
+      backgroundImage: `repeating-linear-gradient(45deg, ${c}, ${c} 1px, transparent 1px, transparent 10px)`,
+      backgroundSize: ''
+    },
+    crossDot: {
+      backgroundImage: `linear-gradient(${c} 1px, transparent 1px), linear-gradient(90deg, ${c} 1px, transparent 1px)`,
+      backgroundSize: '20px 20px'
+    }
+  }
+  const s = styles[pattern]
+  if (s) {
+    overlay.style.backgroundImage = s.backgroundImage
+    overlay.style.backgroundSize = s.backgroundSize
+  } else {
+    overlay.style.backgroundImage = 'none'
+    overlay.style.backgroundSize = ''
+  }
+}
+
+function renderBgPatternSelect() {
+  if (!bgPatternSelect) return
+  const options = bgPatternSelect.querySelectorAll('option')
+  const keys = ['none', 'dots', 'grid', 'crossDot']
+  options.forEach((opt, i) => {
+    if (keys[i]) opt.textContent = t(`bgPattern.${keys[i]}`)
+  })
+  bgPatternSelect.value = currentBgPattern
+}
+
 // ===== DOM Elements =====
 const $ = (id) => document.getElementById(id)
 const toolbar = {
@@ -365,10 +439,17 @@ const themeSelect = $('theme-select')
 const layoutSelect = $('layout-select')
 const rainbowLinesSelect = $('rainbow-lines-select')
 const rainbowLinesPreviewEl = $('rainbow-lines-preview')
+const bgPatternSelect = $('bg-pattern-select')
 const resetNodeBtn = $('btn-reset-node')
 const resetThemeBtn = $('btn-reset-theme')
 
 let currentSidePanelTab = 'node'
+let currentBgPattern = 'none'
+let currentBgPatternColor = '#808080'
+let currentBgPatternOpacity = 10
+const bgPatternColorInput = $('bg-pattern-color')
+const bgPatternOpacityInput = $('bg-pattern-opacity')
+const bgPatternOpacityValue = $('bg-pattern-opacity-value')
 
 // Formula dialog
 const formulaDialogEl = $('formulaDialog')
@@ -748,6 +829,14 @@ function initMindMap(data, config) {
     setCurrentLayout(fullData.layout || 'logicalStructure')
     setCurrentTheme((fullData.theme && fullData.theme.template) || 'default')
     setRainbowLinesState(getRainbowLinesConfig(fullData))
+    currentBgPattern = fullData.backgroundPattern || 'none'
+    currentBgPatternColor = fullData.bgPatternColor || '#808080'
+    currentBgPatternOpacity = fullData.bgPatternOpacity ?? 10
+    if (bgPatternSelect) bgPatternSelect.value = currentBgPattern
+    if (bgPatternColorInput) bgPatternColorInput.value = currentBgPatternColor
+    if (bgPatternOpacityInput) bgPatternOpacityInput.value = currentBgPatternOpacity
+    if (bgPatternOpacityValue) bgPatternOpacityValue.textContent = currentBgPatternOpacity + '%'
+    applyBackgroundPattern()
 
     bindMindMapEvents()
     patchDragDropPreview()
@@ -841,6 +930,9 @@ function buildDocumentSnapshot(data) {
     root: normalized.root,
     theme: normalized.theme,
     rainbowLinesConfig: normalized.rainbowLinesConfig,
+    backgroundPattern: normalized.backgroundPattern || 'none',
+    bgPatternColor: normalized.bgPatternColor || '#808080',
+    bgPatternOpacity: normalized.bgPatternOpacity ?? 10,
   }
 }
 
@@ -1237,6 +1329,14 @@ function resetThemePanelSettings() {
   mindMap.setThemeConfig(custom)
   mindMap.setTheme(themeName)
   applyRainbowLinesConfig({ open: false, colorsList: [] })
+  currentBgPattern = 'none'
+  currentBgPatternColor = '#808080'
+  currentBgPatternOpacity = 10
+  if (bgPatternSelect) bgPatternSelect.value = 'none'
+  if (bgPatternColorInput) bgPatternColorInput.value = '#808080'
+  if (bgPatternOpacityInput) bgPatternOpacityInput.value = 10
+  if (bgPatternOpacityValue) bgPatternOpacityValue.textContent = '10%'
+  applyBackgroundPattern()
   updateThemePanel()
   syncDocumentFromMindMap()
 }
@@ -1294,6 +1394,7 @@ function updateCanvasSettingsPanel() {
   } else {
     renderRainbowSelect()
   }
+  renderBgPatternSelect()
 }
 
 function setCanvasBackgroundColor(color) {
@@ -1504,6 +1605,31 @@ bindSidePanelField(themeSelect, 'change', () => {
 bindSidePanelField(rainbowLinesSelect, 'change', () => {
   selectRainbowPreset(rainbowLinesSelect.value)
 })
+
+bindSidePanelField(bgPatternSelect, 'change', () => {
+  currentBgPattern = bgPatternSelect.value
+  applyBackgroundPattern()
+  syncDocumentFromMindMap()
+})
+
+if (bgPatternColorInput) {
+  bgPatternColorInput.addEventListener('input', () => {
+    currentBgPatternColor = bgPatternColorInput.value
+    applyBackgroundPattern()
+    syncDocumentFromMindMap()
+  })
+}
+
+if (bgPatternOpacityInput) {
+  bgPatternOpacityInput.addEventListener('input', () => {
+    currentBgPatternOpacity = parseInt(bgPatternOpacityInput.value)
+    if (bgPatternOpacityValue) bgPatternOpacityValue.textContent = currentBgPatternOpacity + '%'
+    applyBackgroundPattern()
+  })
+  bgPatternOpacityInput.addEventListener('change', () => {
+    syncDocumentFromMindMap()
+  })
+}
 
 bindSidePanelField(layoutSelect, 'change', () => {
   applyLayout(layoutSelect.value)
@@ -1750,6 +1876,7 @@ function applyLanguage(language) {
   renderThemeSelect()
   renderLayoutSelect()
   renderRainbowSelect()
+  renderBgPatternSelect()
   if (mindMap) {
     mindMap.updateConfig(getMindMapLocaleOptions())
     updateStatusBar()
@@ -1772,6 +1899,14 @@ window.addEventListener('message', (event) => {
         lastSyncedJSON = incoming
         mindMap.setFullData(fullData)
         applyRainbowLinesConfig(fullData.rainbowLinesConfig)
+        currentBgPattern = fullData.backgroundPattern || 'none'
+        currentBgPatternColor = fullData.bgPatternColor || '#808080'
+        currentBgPatternOpacity = fullData.bgPatternOpacity ?? 10
+        if (bgPatternSelect) bgPatternSelect.value = currentBgPattern
+        if (bgPatternColorInput) bgPatternColorInput.value = currentBgPatternColor
+        if (bgPatternOpacityInput) bgPatternOpacityInput.value = currentBgPatternOpacity
+        if (bgPatternOpacityValue) bgPatternOpacityValue.textContent = currentBgPatternOpacity + '%'
+        applyBackgroundPattern()
         setCurrentLayout(fullData.layout || 'logicalStructure')
         setCurrentTheme((fullData.theme && fullData.theme.template) || 'default')
         updateThemePanel()
