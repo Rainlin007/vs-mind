@@ -1,12 +1,7 @@
 import { getDefaultRootTopic } from './i18n'
 
-export const DEFAULT_THEME_CONFIG = {
-  lineWidth: 3,
-  generalizationLineWidth: 3,
-  lineStyle: 'curve',
-  paddingX: 28,
-  paddingY: 12,
-}
+// 整图外观完全由预设主题（media/presetThemes.js）决定，theme.config 恒为空
+export const DEFAULT_THEME_CONFIG = {}
 
 export const DEFAULT_RAINBOW_LINES_CONFIG = {
   open: true,
@@ -27,9 +22,9 @@ export const DEFAULT_MIND_MAP_DATA = {
     data: { text: getDefaultRootTopic(), expand: true },
     children: [] as unknown[],
   },
-  theme: { template: 'earthYellow', config: { ...DEFAULT_THEME_CONFIG } },
+  theme: { template: 'clayLight', config: { ...DEFAULT_THEME_CONFIG } },
   rainbowLinesConfig: { ...DEFAULT_RAINBOW_LINES_CONFIG },
   backgroundPattern: 'grid',
   bgPatternColor: '#808080',
-  bgPatternOpacity: 10,
+  bgPatternOpacity: 5,
 }

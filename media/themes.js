@@ -1,12 +1,13 @@
-import Themes from 'simple-mind-map-plugin-themes'
-import themeList from 'simple-mind-map-plugin-themes/themeList.js'
 import { getLocale, t } from './i18n.js'
+import { presetThemes } from './presetThemes.js'
 
 let registered = false
 
 export function registerThemes(MindMap) {
   if (registered) return
-  Themes.init(MindMap)
+  for (const item of presetThemes) {
+    MindMap.defineTheme(item.value, item.config || {})
+  }
   registered = true
 }
 
@@ -19,37 +20,24 @@ function humanizeThemeValue(value) {
 
 export function getThemeGroups() {
   const locale = getLocale()
-  const labelFor = (value, name) => (locale === 'zh-cn' ? name : humanizeThemeValue(value))
+  const labelFor = (item) =>
+    locale === 'zh-cn' ? item.name : humanizeThemeValue(item.value)
 
-  return [
-    {
-      id: 'default',
-      label: t('theme.defaultGroup'),
-      themes: [{ value: 'default', label: t('theme.default') }],
-    },
-    {
-      id: 'light',
-      label: t('theme.lightGroup'),
-      themes: themeList
-        .filter((item) => !item.dark)
-        .map((item) => ({
-          value: item.value,
-          label: labelFor(item.value, item.name),
-        })),
-    },
-    {
-      id: 'dark',
-      label: t('theme.darkGroup'),
-      themes: themeList
-        .filter((item) => item.dark)
-        .map((item) => ({
-          value: item.value,
-          label: labelFor(item.value, item.name),
-        })),
-    },
-  ]
+  const toEntry = (item) => ({ value: item.value, label: labelFor(item) })
+
+  const lightThemes = presetThemes.filter((item) => !item.dark).map(toEntry)
+  const darkThemes = presetThemes.filter((item) => item.dark).map(toEntry)
+
+  const groups = []
+  if (lightThemes.length) {
+    groups.push({ id: 'light', label: t('theme.lightGroup'), themes: lightThemes })
+  }
+  if (darkThemes.length) {
+    groups.push({ id: 'dark', label: t('theme.darkGroup'), themes: darkThemes })
+  }
+  return groups
 }
 
 export function getAllThemeValues() {
-  return ['default', ...themeList.map((item) => item.value)]
+  return presetThemes.map((item) => item.value)
 }

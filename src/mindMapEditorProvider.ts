@@ -57,7 +57,7 @@ function normalizeMindMapData(data: unknown) {
         ? {
             backgroundPattern: (valid as Record<string, unknown>).backgroundPattern,
             bgPatternColor: (valid as Record<string, unknown>).bgPatternColor || '#808080',
-            bgPatternOpacity: (valid as Record<string, unknown>).bgPatternOpacity ?? 10,
+            bgPatternOpacity: (valid as Record<string, unknown>).bgPatternOpacity ?? 5,
           }
         : {}),
     }
