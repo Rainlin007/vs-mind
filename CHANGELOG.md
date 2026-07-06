@@ -2,6 +2,19 @@
 
 All notable changes to **VS Mind** are documented in this file.
 
+## [1.0.16] - 2026-07-07
+
+### Added
+- Eight curated preset themes replace the long built-in theme list; default theme is **clayLight**
+
+### Changed
+- Simplify Theme side panel: theme and layout dropdowns only; whole-map look comes from presets
+- Stop persisting `theme.config` overrides in `.smm` files
+- Default new maps use 5% background pattern opacity
+
+### Fixed
+- Sync inline text-edit box with node size while typing (fork patch: faster debounce and layout sync)
+
 ## [1.0.11] - 2026-07-05
 
 ### Added
