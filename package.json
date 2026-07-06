@@ -2,7 +2,7 @@
   "name": "vs-mind",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "publisher": "rainlin",
   "icon": "media/icon.png",
   "galleryBanner": {
