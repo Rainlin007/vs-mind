@@ -53,6 +53,13 @@ function normalizeMindMapData(data: unknown) {
       },
       theme: valid.theme || DEFAULT_DATA.theme,
       rainbowLinesConfig: getRainbowLinesConfigFromData(valid),
+      ...((valid as Record<string, unknown>).backgroundPattern
+        ? {
+            backgroundPattern: (valid as Record<string, unknown>).backgroundPattern,
+            bgPatternColor: (valid as Record<string, unknown>).bgPatternColor || '#808080',
+            bgPatternOpacity: (valid as Record<string, unknown>).bgPatternOpacity ?? 10,
+          }
+        : {}),
     }
   }
 
