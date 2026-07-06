@@ -173,7 +173,7 @@
         },
         "mindMap.defaultTheme": {
           "type": "string",
-          "default": "default",
+          "default": "earthYellow",
           "description": "%configuration.defaultTheme%"
         },
         "mindMap.autoFit": {

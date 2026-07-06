@@ -378,6 +378,22 @@ html, body {
   outline: none;
 }
 
+.panel-select-sm {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground, #999);
+}
+
+.style-row.hidden {
+  display: none;
+}
+
 .panel-color {
   width: 32px;
   height: 24px;
@@ -588,6 +604,7 @@ html, body {
 .smm-richtext-node-edit-wrap {
   background: transparent !important;
   box-shadow: none !important;
+  box-sizing: border-box;
 }
 
 .smm-richtext-node-edit-wrap .ql-container.ql-snow {
@@ -598,6 +615,10 @@ html, body {
 .smm-richtext-node-edit-wrap .ql-editor {
   background: transparent !important;
   padding: 0;
+}
+
+.smm-richtext-node-edit-wrap .ql-editor p {
+  margin: 0;
 }
 
 .ql-editor {

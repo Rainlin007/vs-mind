@@ -2,16 +2,8 @@ import * as vscode from 'vscode'
 import * as path from 'path'
 import * as fs from 'fs'
 import { MindMapEditorProvider } from './mindMapEditorProvider'
-import { getDefaultRootTopic, t } from './i18n'
-
-const DEFAULT_DATA = {
-  layout: 'logicalStructure',
-  root: {
-    data: { text: getDefaultRootTopic(), expand: true },
-    children: [],
-  },
-  theme: { template: 'default', config: {} },
-}
+import { DEFAULT_MIND_MAP_DATA } from './defaultMindMapData'
+import { t } from './i18n'
 
 export function activate(context: vscode.ExtensionContext) {
   const provider = MindMapEditorProvider.register(context)
@@ -44,9 +36,12 @@ export function activate(context: vscode.ExtensionContext) {
 
       const config = vscode.workspace.getConfiguration('mindMap')
       const data = {
-        ...DEFAULT_DATA,
-        layout: config.get<string>('defaultLayout', 'logicalStructure'),
-        theme: { template: config.get<string>('defaultTheme', 'default'), config: {} },
+        ...DEFAULT_MIND_MAP_DATA,
+        layout: config.get<string>('defaultLayout', DEFAULT_MIND_MAP_DATA.layout),
+        theme: {
+          template: config.get<string>('defaultTheme', DEFAULT_MIND_MAP_DATA.theme.template),
+          config: { ...DEFAULT_MIND_MAP_DATA.theme.config },
+        },
       }
 
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8')

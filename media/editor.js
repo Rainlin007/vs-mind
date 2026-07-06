@@ -27,6 +27,11 @@ import {
   getRainbowPresetById,
   resolveRainbowPresetId,
 } from './rainbowLines.js'
+import {
+  getLineStylesForLayout,
+  isLineRadiusSupported,
+  normalizeLineStyleForLayout,
+} from './lineStyle.js'
 
 registerThemes(MindMap)
 
@@ -48,8 +53,28 @@ const vscode = acquireVsCodeApi()
 const DEFAULT_MIND_MAP_DATA = {
   layout: 'logicalStructure',
   root: { data: { text: '', expand: true }, children: [] },
-  theme: { template: 'earthYellow', config: { lineWidth: 3, generalizationLineWidth: 3 } },
-  rainbowLinesConfig: { open: false, colorsList: [] },
+  theme: {
+    template: 'earthYellow',
+    config: {
+      lineWidth: 3,
+      generalizationLineWidth: 3,
+      lineStyle: 'curve',
+      paddingX: 28,
+      paddingY: 12,
+    },
+  },
+  rainbowLinesConfig: {
+    open: true,
+    colorsList: [
+      'rgb(255, 229, 142)',
+      'rgb(254, 158, 41)',
+      'rgb(248, 119, 44)',
+      'rgb(232, 82, 80)',
+      'rgb(182, 66, 98)',
+      'rgb(99, 54, 99)',
+      'rgb(65, 40, 82)',
+    ],
+  },
   backgroundPattern: 'grid',
   bgPatternColor: '#808080',
   bgPatternOpacity: 10,
@@ -121,7 +146,10 @@ function normalizeMindMapData(data) {
       },
       theme: {
         template: theme.template || DEFAULT_MIND_MAP_DATA.theme.template,
-        config: normalizeThemeConfig(theme.config),
+        config: {
+          ...DEFAULT_MIND_MAP_DATA.theme.config,
+          ...normalizeThemeConfig(theme.config),
+        },
       },
       rainbowLinesConfig: getRainbowLinesConfig(data),
       ...(data.backgroundPattern ? {
@@ -213,6 +241,7 @@ function applyLayout(layout) {
   if (!mindMap || layout === currentLayout) return
   mindMap.setLayout(layout)
   setCurrentLayout(layout)
+  updateLineStyleControls()
   syncDocumentFromMindMap()
 }
 
@@ -258,6 +287,7 @@ function setRainbowLinesState(config) {
   currentRainbowPreset = resolveRainbowPresetId(normalized)
   if (rainbowLinesSelect) rainbowLinesSelect.value = currentRainbowPreset
   updateRainbowPreview()
+  updateThemeLineColorFieldState()
 }
 
 function createRainbowColorsBar(colors) {
@@ -432,7 +462,14 @@ const nodeColorOpacity = $('node-color-opacity')
 const nodeBgColor = $('node-bg-color')
 const nodeBgOpacity = $('node-bg-opacity')
 const nodeFontSize = $('node-font-size')
+const lineStyleSelect = $('line-style-select')
+const lineColorInput = $('line-color')
 const lineWidthInput = $('line-width')
+const lineRadiusInput = $('line-radius')
+const lineRadiusRow = $('line-radius-row')
+const showLineMarkerInput = $('show-line-marker')
+const nodePaddingXInput = $('node-padding-x')
+const nodePaddingYInput = $('node-padding-y')
 const canvasBgColor = $('canvas-bg-color')
 const themeSelect = $('theme-select')
 const layoutSelect = $('layout-select')
@@ -1150,7 +1187,13 @@ const THEME_PANEL_CONFIG_KEYS = [
   'backgroundRepeat',
   'backgroundPosition',
   'backgroundSize',
+  'lineStyle',
+  'lineColor',
   'lineWidth',
+  'lineRadius',
+  'showLineMarker',
+  'paddingX',
+  'paddingY',
   'generalizationLineWidth',
 ]
 
@@ -1172,16 +1215,19 @@ function resetThemePanelSettings() {
   for (const key of THEME_PANEL_CONFIG_KEYS) {
     delete custom[key]
   }
-  mindMap.setThemeConfig(custom)
+  mindMap.setThemeConfig({
+    ...custom,
+    ...DEFAULT_MIND_MAP_DATA.theme.config,
+  })
   mindMap.setTheme(themeName)
-  applyRainbowLinesConfig({ open: false, colorsList: [] })
-  currentBgPattern = 'none'
-  currentBgPatternColor = '#808080'
-  currentBgPatternOpacity = 10
-  if (bgPatternSelect) bgPatternSelect.value = 'none'
-  if (bgPatternColorInput) bgPatternColorInput.value = '#808080'
-  if (bgPatternOpacityInput) bgPatternOpacityInput.value = 10
-  if (bgPatternOpacityValue) bgPatternOpacityValue.textContent = '10%'
+  applyRainbowLinesConfig({ ...DEFAULT_MIND_MAP_DATA.rainbowLinesConfig })
+  currentBgPattern = DEFAULT_MIND_MAP_DATA.backgroundPattern
+  currentBgPatternColor = DEFAULT_MIND_MAP_DATA.bgPatternColor
+  currentBgPatternOpacity = DEFAULT_MIND_MAP_DATA.bgPatternOpacity
+  if (bgPatternSelect) bgPatternSelect.value = currentBgPattern
+  if (bgPatternColorInput) bgPatternColorInput.value = currentBgPatternColor
+  if (bgPatternOpacityInput) bgPatternOpacityInput.value = currentBgPatternOpacity
+  if (bgPatternOpacityValue) bgPatternOpacityValue.textContent = `${currentBgPatternOpacity}%`
   applyBackgroundPattern()
   updateThemePanel()
   syncDocumentFromMindMap()
@@ -1219,6 +1265,79 @@ function setNodePanelFieldsEnabled(enabled) {
   if (resetNodeBtn) resetNodeBtn.disabled = !enabled
 }
 
+function patchThemeConfig(patch) {
+  if (!mindMap) return
+  mindMap.setThemeConfig({
+    ...mindMap.getCustomThemeConfig(),
+    ...patch,
+  })
+  syncDocumentFromMindMap()
+}
+
+function isRainbowLinesActive() {
+  return !!(mindMap?.opt?.rainbowLinesConfig?.open)
+}
+
+function renderLineStyleSelect() {
+  if (!lineStyleSelect) return
+  const currentValue = mindMap?.getThemeConfig('lineStyle') || 'straight'
+  const options = getLineStylesForLayout(currentLayout)
+  lineStyleSelect.innerHTML = ''
+  for (const option of options) {
+    const el = document.createElement('option')
+    el.value = option.value
+    el.textContent = option.label
+    lineStyleSelect.appendChild(el)
+  }
+  const normalized = normalizeLineStyleForLayout(currentLayout, currentValue)
+  lineStyleSelect.value = normalized
+}
+
+function updateLineRadiusVisibility() {
+  if (!lineRadiusRow || !mindMap) return
+  const lineStyle = mindMap.getThemeConfig('lineStyle') || 'straight'
+  const visible = isLineRadiusSupported(currentLayout, lineStyle)
+  lineRadiusRow.classList.toggle('hidden', !visible)
+}
+
+function updateThemeLineColorFieldState() {
+  if (!lineColorInput) return
+  lineColorInput.disabled = isRainbowLinesActive()
+}
+
+function updateLineStyleControls() {
+  renderLineStyleSelect()
+  updateLineRadiusVisibility()
+  updateThemeLineColorFieldState()
+}
+
+function setThemeLineStyle(value) {
+  if (!mindMap || !value) return
+  const normalized = normalizeLineStyleForLayout(currentLayout, value)
+  if (lineStyleSelect) lineStyleSelect.value = normalized
+  patchThemeConfig({ lineStyle: normalized })
+  updateLineRadiusVisibility()
+}
+
+function setThemeLineColor(color) {
+  if (!mindMap || !color || isRainbowLinesActive()) return
+  if (lineColorInput) lineColorInput.value = colorToHexInputValue(color, '#549688')
+  patchThemeConfig({ lineColor: color })
+}
+
+function setThemeLineRadius(value) {
+  if (!mindMap) return
+  const normalized = Math.max(0, Math.min(20, Number(value) || 0))
+  if (lineRadiusInput) lineRadiusInput.value = normalized
+  patchThemeConfig({ lineRadius: normalized })
+}
+
+function setThemeShowLineMarker(checked) {
+  if (!mindMap) return
+  if (showLineMarkerInput) showLineMarkerInput.checked = !!checked
+  patchThemeConfig({ showLineMarker: !!checked })
+}
+
 function updateThemePanel() {
   renderThemeSelect()
   renderLayoutSelect()
@@ -1227,7 +1346,26 @@ function updateThemePanel() {
 
 function updateCanvasSettingsPanel() {
   if (!mindMap || !lineWidthInput) return
+  updateLineStyleControls()
   lineWidthInput.value = mindMap.getThemeConfig('lineWidth')
+  if (lineColorInput) {
+    lineColorInput.value = colorToHexInputValue(
+      mindMap.getThemeConfig('lineColor'),
+      '#549688',
+    )
+  }
+  if (lineRadiusInput) {
+    lineRadiusInput.value = mindMap.getThemeConfig('lineRadius') ?? 5
+  }
+  if (showLineMarkerInput) {
+    showLineMarkerInput.checked = !!mindMap.getThemeConfig('showLineMarker')
+  }
+  if (nodePaddingXInput) {
+    nodePaddingXInput.value = mindMap.getThemeConfig('paddingX') ?? 15
+  }
+  if (nodePaddingYInput) {
+    nodePaddingYInput.value = mindMap.getThemeConfig('paddingY') ?? 5
+  }
   if (canvasBgColor) {
     canvasBgColor.value = colorToHexInputValue(
       mindMap.getThemeConfig('backgroundColor'),
@@ -1259,6 +1397,19 @@ function setLineWidth(width) {
     ...mindMap.getCustomThemeConfig(),
     lineWidth: normalized,
     generalizationLineWidth: normalized,
+  })
+  syncDocumentFromMindMap()
+}
+
+function setNodePadding(axis, value) {
+  if (!mindMap) return
+  const key = axis === 'y' ? 'paddingY' : 'paddingX'
+  const input = axis === 'y' ? nodePaddingYInput : nodePaddingXInput
+  const normalized = Math.max(0, Math.min(100, Math.round(Number(value) || 0)))
+  if (input) input.value = normalized
+  mindMap.setThemeConfig({
+    ...mindMap.getCustomThemeConfig(),
+    [key]: normalized,
   })
   syncDocumentFromMindMap()
 }
@@ -1412,6 +1563,29 @@ bindSidePanelField(nodeFontSize, 'change', () => {
   mindMap.execCommand('SET_NODE_STYLE', activeNodes[0], 'fontSize', parseInt(nodeFontSize.value))
 })
 
+bindSidePanelField(lineStyleSelect, 'change', () => {
+  setThemeLineStyle(lineStyleSelect.value)
+})
+
+bindSidePanelField(lineColorInput, 'input', () => {
+  setThemeLineColor(lineColorInput.value)
+})
+
+bindSidePanelField(lineRadiusInput, 'change', () => {
+  setThemeLineRadius(lineRadiusInput.value)
+})
+
+bindSidePanelField(lineRadiusInput, 'input', () => {
+  clearTimeout(sidePanelDebounce)
+  sidePanelDebounce = setTimeout(() => {
+    setThemeLineRadius(lineRadiusInput.value)
+  }, 150)
+})
+
+bindSidePanelField(showLineMarkerInput, 'change', () => {
+  setThemeShowLineMarker(showLineMarkerInput.checked)
+})
+
 bindSidePanelField(lineWidthInput, 'change', () => {
   setLineWidth(lineWidthInput.value)
 })
@@ -1420,6 +1594,28 @@ bindSidePanelField(lineWidthInput, 'input', () => {
   clearTimeout(sidePanelDebounce)
   sidePanelDebounce = setTimeout(() => {
     setLineWidth(lineWidthInput.value)
+  }, 300)
+})
+
+bindSidePanelField(nodePaddingXInput, 'change', () => {
+  setNodePadding('x', nodePaddingXInput.value)
+})
+
+bindSidePanelField(nodePaddingXInput, 'input', () => {
+  clearTimeout(sidePanelDebounce)
+  sidePanelDebounce = setTimeout(() => {
+    setNodePadding('x', nodePaddingXInput.value)
+  }, 300)
+})
+
+bindSidePanelField(nodePaddingYInput, 'change', () => {
+  setNodePadding('y', nodePaddingYInput.value)
+})
+
+bindSidePanelField(nodePaddingYInput, 'input', () => {
+  clearTimeout(sidePanelDebounce)
+  sidePanelDebounce = setTimeout(() => {
+    setNodePadding('y', nodePaddingYInput.value)
   }, 300)
 })
 
@@ -1702,6 +1898,7 @@ function applyLanguage(language) {
   renderLayoutSelect()
   renderRainbowSelect()
   renderBgPatternSelect()
+  renderLineStyleSelect()
   if (mindMap) {
     mindMap.updateConfig(getMindMapLocaleOptions())
     updateStatusBar()

@@ -2,15 +2,9 @@ import * as vscode from 'vscode'
 import * as fs from 'fs'
 import * as path from 'path'
 import { getDefaultRootTopic, resolveDisplayLanguage, t } from './i18n'
+import { DEFAULT_MIND_MAP_DATA, DEFAULT_THEME_CONFIG } from './defaultMindMapData'
 
-const DEFAULT_DATA = {
-  layout: 'logicalStructure',
-  root: {
-    data: { text: getDefaultRootTopic(), expand: true },
-    children: [],
-  },
-  theme: { template: 'default', config: {} },
-}
+const DEFAULT_DATA = DEFAULT_MIND_MAP_DATA
 
 function isValidView(view: unknown): boolean {
   if (!view || typeof view !== 'object') return false
@@ -51,7 +45,13 @@ function normalizeMindMapData(data: unknown) {
         },
         children: valid.root.children || [],
       },
-      theme: valid.theme || DEFAULT_DATA.theme,
+      theme: {
+        template: valid.theme?.template || DEFAULT_DATA.theme.template,
+        config: {
+          ...DEFAULT_THEME_CONFIG,
+          ...(valid.theme?.config || {}),
+        },
+      },
       rainbowLinesConfig: getRainbowLinesConfigFromData(valid),
       ...((valid as Record<string, unknown>).backgroundPattern
         ? {
@@ -154,11 +154,15 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 
     const data = parseMindMapText(text)
     const config = vscode.workspace.getConfiguration('mindMap')
-    data.layout = config.get<string>('defaultLayout', 'logicalStructure')
+    data.layout = config.get<string>('defaultLayout', DEFAULT_DATA.layout)
     data.theme = {
-      template: config.get<string>('defaultTheme', 'default'),
-      config: {},
+      template: config.get<string>('defaultTheme', DEFAULT_DATA.theme.template),
+      config: { ...DEFAULT_THEME_CONFIG },
     }
+    data.rainbowLinesConfig = { ...DEFAULT_DATA.rainbowLinesConfig }
+    data.backgroundPattern = DEFAULT_DATA.backgroundPattern
+    data.bgPatternColor = DEFAULT_DATA.bgPatternColor
+    data.bgPatternOpacity = DEFAULT_DATA.bgPatternOpacity
 
     const json = JSON.stringify(data, null, 2)
     const fullRange = new vscode.Range(
