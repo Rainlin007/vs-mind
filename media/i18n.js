@@ -148,6 +148,7 @@ const MESSAGES = {
       initFailed: 'Failed to initialize mind map: {message}',
       pngExportFailed: 'PNG export failed: {message}',
       svgExportFailed: 'SVG export failed: {message}',
+      mdExportFailed: 'Markdown export failed: {message}',
     },
   },
   'zh-cn': {
@@ -299,6 +300,7 @@ const MESSAGES = {
       initFailed: '思维导图初始化失败: {message}',
       pngExportFailed: 'PNG 导出失败: {message}',
       svgExportFailed: 'SVG 导出失败: {message}',
+      mdExportFailed: 'Markdown 导出失败: {message}',
     },
   },
 }

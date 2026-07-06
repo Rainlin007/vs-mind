@@ -263,30 +263,35 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
         }
 
         case 'export': {
-          const { format, dataUrl, svgContent } = message
+          const { format, dataUrl } = message
           const baseName = path.basename(document.uri.fsPath, '.smm')
+          const ext = format === 'md' ? 'md' : format
           const defaultUri = vscode.Uri.file(
-            path.join(path.dirname(document.uri.fsPath), `${baseName}.${format}`)
+            path.join(path.dirname(document.uri.fsPath), `${baseName}.${ext}`)
           )
+
+          const filterMap: Record<string, Record<string, string[]>> = {
+            png: { 'PNG Images': ['png'] },
+            svg: { 'SVG Files': ['svg'] },
+            json: { 'JSON Files': ['json'] },
+            md: { 'Markdown Files': ['md'] },
+          }
 
           const saveUri = await vscode.window.showSaveDialog({
             defaultUri,
-            filters: format === 'svg'
-              ? { 'SVG Files': ['svg'] }
-              : format === 'png'
-              ? { 'PNG Images': ['png'] }
-              : { 'JSON Files': ['json'] },
+            filters: filterMap[format] || { 'All Files': ['*'] },
           })
 
           if (!saveUri) break
 
           if (format === 'json') {
             fs.writeFileSync(saveUri.fsPath, document.getText(), 'utf8')
-          } else if (format === 'svg') {
-            fs.writeFileSync(saveUri.fsPath, svgContent, 'utf8')
           } else if (format === 'png' && dataUrl) {
             const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
             fs.writeFileSync(saveUri.fsPath, Buffer.from(base64, 'base64'))
+          } else if ((format === 'svg' || format === 'md') && dataUrl) {
+            const base64 = dataUrl.replace(/^data:[^;]+;base64,/, '')
+            fs.writeFileSync(saveUri.fsPath, Buffer.from(base64, 'base64').toString('utf8'))
           }
 
           vscode.window.showInformationMessage(t('exportSuccess', { path: saveUri.fsPath }))

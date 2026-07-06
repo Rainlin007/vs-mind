@@ -656,6 +656,14 @@ function initMindMap(data, config) {
         katexFontPath: config?.katexFontPath || '',
         getKatexOutputType: () => 'html',
         scaleRatio: 0.03,
+        exportPaddingX: 20,
+        exportPaddingY: 20,
+        handleBeingExportSvg: (svg) => {
+          const w = svg.width()
+          const h = svg.height()
+          if (w > 0 && h > 0) svg.viewbox(0, 0, w, h)
+          return svg
+        },
         ...getMindMapLocaleOptions(),
         errorHandler: (code, err) => {
           console.error('MindMap error:', code, err)
@@ -936,6 +944,7 @@ $('btn-close-panel').addEventListener('click', () => {
 // ===== Export =====
 async function handleExport(format) {
   if (!mindMap) return
+  mindMap.resize()
 
   if (format === 'json') {
     const data = mindMap.getData(true)
@@ -955,10 +964,20 @@ async function handleExport(format) {
 
   if (format === 'svg') {
     try {
-      const svgContent = await mindMap.doExport.export('svg', false, 'mind-map')
-      vscode.postMessage({ type: 'export', format: 'svg', svgContent })
+      const dataUrl = await mindMap.doExport.export('svg', false, 'mind-map')
+      vscode.postMessage({ type: 'export', format: 'svg', dataUrl })
     } catch (err) {
       vscode.postMessage({ type: 'error', text: t('error.svgExportFailed', { message: err.message }) })
+    }
+    return
+  }
+
+  if (format === 'md') {
+    try {
+      const dataUrl = await mindMap.doExport.export('md', false)
+      vscode.postMessage({ type: 'export', format: 'md', dataUrl })
+    } catch (err) {
+      vscode.postMessage({ type: 'error', text: t('error.mdExportFailed', { message: err.message }) })
     }
   }
 }
