@@ -420,7 +420,6 @@ const statusNodes = $('status-nodes')
 const statusZoom = $('status-zoom')
 
 // Side panel fields
-const nodeText = $('node-text')
 const nodeNote = $('node-note')
 const nodeComment = $('node-comment')
 const nodeLink = $('node-link')
@@ -451,145 +450,12 @@ const bgPatternColorInput = $('bg-pattern-color')
 const bgPatternOpacityInput = $('bg-pattern-opacity')
 const bgPatternOpacityValue = $('bg-pattern-opacity-value')
 
-// Formula dialog
-const formulaDialogEl = $('formulaDialog')
-const formulaInputEl = $('formula-input')
-const formulaConfirmBtn = $('formula-confirm')
-const formulaCancelBtn = $('formula-cancel')
-let formulaDialogCallback = null
-
-function htmlEscapeText(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-function htmlEscapeAttr(text) {
-  return htmlEscapeText(text)
-}
-
-function extractPlainTextFromRichHtml(html) {
-  if (!html) return ''
-  const tmp = document.createElement('div')
-  tmp.innerHTML = html
-  tmp.querySelectorAll('.ql-formula').forEach((el) => {
-    const value = el.getAttribute('data-value')
-    if (value) {
-      el.replaceWith(document.createTextNode(`$${decodeHtmlEntities(value)}$`))
-      return
-    }
-    const annotation = el.querySelector('annotation')
-    if (annotation?.textContent) {
-      el.replaceWith(document.createTextNode(`$${annotation.textContent.trim()}$`))
-    }
-  })
-
-  const paragraphs = Array.from(tmp.querySelectorAll('p'))
-  if (paragraphs.length) {
-    return paragraphs.map((p) => p.textContent || '').join('\n').replace(/\n$/, '')
-  }
-  return (tmp.textContent || '').replace(/\n$/, '')
-}
-
-function convertRichHtmlToPlainSource(html) {
-  if (!html) return ''
-  let sourceHtml = html
-  if (mindMap?.formula?.latexRichToText) {
-    sourceHtml = mindMap.formula.latexRichToText(sourceHtml)
-  }
-  return extractPlainTextFromRichHtml(sourceHtml)
-}
-
-function getPlainTextForNode(node) {
-  if (!node) return ''
-  const data = node.getData()
-  if (!data?.text) return ''
-  if (!data.richText) return data.text
-  return convertRichHtmlToPlainSource(data.text)
-}
-
-function syncNodeTextInputField(force = false) {
-  if (!force && document.activeElement === nodeText) return
-  if (activeNodes.length !== 1) {
-    nodeText.value = ''
-    return
-  }
-  const node = activeNodes[0]
-  const text = getPlainTextForNode(node)
-  nodeText.value = text
-  mindMap?.execCommand('SET_NODE_DATA', node, { textInput: text })
-}
-
-function renderFormulaSpan(latex) {
-  const span = document.createElement('span')
-  span.className = 'ql-formula'
-  span.setAttribute('data-value', htmlEscapeAttr(latex))
-  if (window.katex) {
-    window.katex.render(latex, span, getKatexRenderConfig())
-  }
-  return span.outerHTML
-}
-
-function processPlainLine(line) {
-  const parts = String(line).split(/(\$.+?\$)/g)
-  let inner = ''
-  for (const part of parts) {
-    if (!part) continue
-    if (/^\$.+?\$$/.test(part)) {
-      const latex = part.slice(1, -1).trim()
-      if (latex && mindMap?.formula?.checkFormulaIsLegal(latex)) {
-        inner += renderFormulaSpan(latex)
-      } else {
-        inner += htmlEscapeText(part)
-      }
-    } else {
-      inner += htmlEscapeText(part)
-    }
-  }
-  return inner || '<br>'
-}
-
-function buildRichTextHtmlFromPlainInput(text) {
-  const lines = String(text ?? '').split('\n')
-  if (!lines.length) return '<p><br></p>'
-  return lines.map((line) => `<p>${processPlainLine(line)}</p>`).join('')
-}
-
-function applySidePanelNodeText(node, text) {
-  if (!mindMap || !node) return
-  const source = String(text ?? '')
-  const html = buildRichTextHtmlFromPlainInput(source)
-  mindMap.execCommand('SET_NODE_TEXT', node, html, true, true)
-  mindMap.execCommand('SET_NODE_DATA', node, { textInput: source })
-}
-
-function showSidePanelForEditing(focusText = true) {
-  sidePanel.classList.remove('hidden')
-  toolbar.sidebarToggle.classList.add('active')
-  if (focusText) {
-    nodeText.focus()
-    const len = nodeText.value.length
-    nodeText.setSelectionRange(len, len)
-  }
-}
-
-function insertFormulaToNode(node, latex) {
-  const trimmed = latex?.trim()
-  if (!trimmed || !mindMap?.formula || !node) return
-  if (!mindMap.formula.checkFormulaIsLegal(trimmed)) return
-
-  const current = getPlainTextForNode(node)
-  const spacer = current && !/\s$/.test(current) ? ' ' : ''
-  const newText = `${current}${spacer}$${trimmed}$`
-  applySidePanelNodeText(node, newText)
-
-  if (activeNodes.length === 1 && activeNodes[0] === node) {
-    nodeText.value = newText
-  }
-  showSidePanelForEditing(true)
-}
+const richTextToolbarEl = $('richTextToolbar')
+const rtBoldBtn = $('rt-bold')
+const rtItalicBtn = $('rt-italic')
+const rtUnderlineBtn = $('rt-underline')
+const rtStrikeBtn = $('rt-strike')
+let lastFormatInfo = {}
 
 function getKatexRenderConfig() {
   return mindMap?.formula?.config || {
@@ -655,62 +521,51 @@ function hydrateAllFormulaNodes() {
   return changed
 }
 
-function showFormulaDialog(onConfirm) {
-  if (!formulaDialogEl || !formulaInputEl) return
-  formulaDialogCallback = onConfirm
-  formulaInputEl.value = ''
-  formulaDialogEl.classList.remove('hidden')
-  formulaInputEl.focus()
+function hideRichTextToolbar() {
+  if (richTextToolbarEl) richTextToolbarEl.style.display = 'none'
 }
 
-function hideFormulaDialog() {
-  if (!formulaDialogEl) return
-  formulaDialogEl.classList.add('hidden')
-  formulaInputEl.value = ''
-  formulaDialogCallback = null
+function showRichTextToolbar(rect, formatInfo) {
+  if (!richTextToolbarEl) return
+  lastFormatInfo = formatInfo || {}
+  rtBoldBtn?.classList.toggle('active', !!lastFormatInfo.bold)
+  rtItalicBtn?.classList.toggle('active', !!lastFormatInfo.italic)
+  rtUnderlineBtn?.classList.toggle('active', !!lastFormatInfo.underline)
+  rtStrikeBtn?.classList.toggle('active', !!lastFormatInfo.strike)
+
+  richTextToolbarEl.style.display = 'flex'
+  const toolbarW = richTextToolbarEl.offsetWidth
+  const toolbarH = richTextToolbarEl.offsetHeight
+  let left = rect.left + rect.width / 2 - toolbarW / 2
+  let top = rect.top - toolbarH - 8
+  if (top < 0) top = rect.bottom + 8
+  if (left < 0) left = 4
+  if (left + toolbarW > window.innerWidth) left = window.innerWidth - toolbarW - 4
+  richTextToolbarEl.style.left = left + 'px'
+  richTextToolbarEl.style.top = top + 'px'
 }
 
-function confirmFormulaDialog() {
-  const latex = formulaInputEl?.value?.trim()
-  if (!latex) {
-    formulaInputEl?.focus()
-    return
-  }
-  const callback = formulaDialogCallback
-  hideFormulaDialog()
-  callback?.(latex)
+function toggleRichTextFormat(key) {
+  if (!mindMap?.richText) return
+  const newVal = !lastFormatInfo[key]
+  mindMap.richText.formatText({ [key]: newVal })
+  lastFormatInfo[key] = newVal
+  const btnMap = { bold: rtBoldBtn, italic: rtItalicBtn, underline: rtUnderlineBtn, strike: rtStrikeBtn }
+  btnMap[key]?.classList.toggle('active', newVal)
 }
 
-function initFormulaUi() {
-  formulaConfirmBtn?.addEventListener('click', (e) => {
+if (richTextToolbarEl) {
+  richTextToolbarEl.addEventListener('mousedown', (e) => {
     e.preventDefault()
-    confirmFormulaDialog()
   })
-
-  formulaCancelBtn?.addEventListener('click', (e) => {
-    e.preventDefault()
-    hideFormulaDialog()
-  })
-
-  formulaDialogEl?.addEventListener('click', (e) => {
-    if (e.target === formulaDialogEl) hideFormulaDialog()
-  })
-
-  formulaInputEl?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      confirmFormulaDialog()
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      hideFormulaDialog()
-    }
-  })
+  rtBoldBtn?.addEventListener('click', () => toggleRichTextFormat('bold'))
+  rtItalicBtn?.addEventListener('click', () => toggleRichTextFormat('italic'))
+  rtUnderlineBtn?.addEventListener('click', () => toggleRichTextFormat('underline'))
+  rtStrikeBtn?.addEventListener('click', () => toggleRichTextFormat('strike'))
 }
-
-initFormulaUi()
 
 const SHORTCUT_GUARD_SELECTOR =
-  '#sidePanel, #searchPanel, #formulaDialog, .formula-dialog-panel'
+  '#sidePanel, #searchPanel, #richTextToolbar'
 
 function getShortcutEventElement(e) {
   if (e?.target instanceof HTMLElement) return e.target
@@ -751,7 +606,7 @@ function releaseMindMapShortcutsIfSafe() {
 }
 
 function bindShortcutGuards() {
-  ;[sidePanel, searchPanel, formulaDialogEl].filter(Boolean).forEach((root) => {
+  ;[sidePanel, searchPanel].filter(Boolean).forEach((root) => {
     root.addEventListener('focusout', () => {
       // relatedTarget is often null when clicking the canvas; defer to activeElement
       setTimeout(() => releaseMindMapShortcutsIfSafe(), 0)
@@ -795,11 +650,12 @@ function initMindMap(data, config) {
         enableShortcutOnlyWhenMouseInSvg: false,
         customCheckEnableShortcut: shouldEnableMindMapShortcut,
         enableAutoEnterTextEditWhenKeydown: false,
+        selectTextOnEnterEditText: true,
         openRealtimeRenderOnNodeTextEdit: true,
         enableEditFormulaInRichTextEdit: true,
         katexFontPath: config?.katexFontPath || '',
         getKatexOutputType: () => 'html',
-        scaleRatio: 0.06,
+        scaleRatio: 0.03,
         ...getMindMapLocaleOptions(),
         errorHandler: (code, err) => {
           console.error('MindMap error:', code, err)
@@ -873,38 +729,24 @@ function patchDragDropPreview() {
   }
 }
 
-let inlineEditSidePanelTimer = null
-
 function bindMindMapEvents() {
   mindMap.on('data_change', onDataChange)
   mindMap.on('view_data_change', onViewChange)
   mindMap.on('scale', onScaleChange)
   mindMap.on('node_active', onNodeActive)
   mindMap.on('node_contextmenu', onNodeContextMenu)
-  mindMap.on('before_show_text_edit', () => {
-    const node = mindMap.richText?.node
-    if (node && document.activeElement !== nodeText) {
-      const plain = getPlainTextForNode(node)
-      nodeText.value = plain
+  mindMap.on('rich_text_selection_change', (hasRange, rect, formatInfo) => {
+    if (hasRange && rect) {
+      showRichTextToolbar(rect, formatInfo)
+    } else {
+      hideRichTextToolbar()
     }
   })
-  mindMap.on('node_text_edit_change', ({ node, text, richText }) => {
-    if (!richText || document.activeElement === nodeText) return
-    if (activeNodes.length !== 1 || activeNodes[0] !== node) return
-    clearTimeout(inlineEditSidePanelTimer)
-    inlineEditSidePanelTimer = setTimeout(() => {
-      nodeText.value = convertRichHtmlToPlainSource(text)
-    }, 100)
-  })
-  mindMap.on('hide_text_edit', (_el, nodes) => {
-    // Inline edit ends while focus may still be on .ql-editor; always unpause.
+  mindMap.on('hide_text_edit', () => {
+    hideRichTextToolbar()
     requestAnimationFrame(() => {
       mindMap.keyCommand.recovery()
     })
-    syncTextInputFromNodes(nodes)
-    if (activeNodes.length === 1) {
-      syncNodeTextInputField(true)
-    }
   })
   mindMap.on('draw_click', () => {
     hideContextMenu()
@@ -968,26 +810,11 @@ function onScaleChange(scale) {
   updateStatusBarI18n(undefined, pct)
 }
 
-function syncTextInputFromNodes(nodes) {
-  if (!mindMap || !nodes?.length) return
-  nodes.forEach((node) => {
-    mindMap.execCommand('SET_NODE_DATA', node, {
-      textInput: getPlainTextForNode(node),
-    })
-  })
-}
-
 function onNodeActive(node, activeNodeList) {
-  if (document.activeElement === nodeText && activeNodes.length === 1) {
-    applySidePanelNodeText(activeNodes[0], nodeText.value)
-  }
   activeNodes = activeNodeList || []
   updateSidePanel()
   if (activeNodes.length === 1) {
     switchSidePanelTab('node')
-  }
-  if (document.activeElement === nodeText) {
-    nodeText.blur()
   }
 }
 
@@ -1355,7 +1182,6 @@ function resetNodePanelSettings() {
 
 function setNodePanelFieldsEnabled(enabled) {
   const fields = [
-    nodeText,
     nodeNote,
     nodeComment,
     nodeLink,
@@ -1429,7 +1255,6 @@ function updateSidePanel() {
   setNodePanelFieldsEnabled(hasSingleNode)
 
   if (!hasSingleNode) {
-    nodeText.value = ''
     nodeNote.value = ''
     nodeComment.value = ''
     nodeLink.value = ''
@@ -1442,7 +1267,6 @@ function updateSidePanel() {
   const node = activeNodes[0]
   const data = node.getData()
 
-  syncNodeTextInputField()
   nodeNote.value = data.note || ''
   nodeComment.value = data.comment || ''
   nodeLink.value = data.hyperlink || ''
@@ -1481,20 +1305,6 @@ let sidePanelDebounce = null
 function bindSidePanelField(el, eventName, handler) {
   el?.addEventListener(eventName, handler)
 }
-
-bindSidePanelField(nodeText, 'input', () => {
-  if (!mindMap || activeNodes.length !== 1) return
-  clearTimeout(sidePanelDebounce)
-  sidePanelDebounce = setTimeout(() => {
-    applySidePanelNodeText(activeNodes[0], nodeText.value)
-  }, 300)
-})
-
-bindSidePanelField(nodeText, 'blur', () => {
-  if (!mindMap || activeNodes.length !== 1) return
-  clearTimeout(sidePanelDebounce)
-  applySidePanelNodeText(activeNodes[0], nodeText.value)
-})
 
 bindSidePanelField(nodeNote, 'input', () => {
   if (!mindMap || activeNodes.length !== 1) return
@@ -1732,10 +1542,6 @@ function showNodeContextMenu(x, y, node) {
   }
 
   contextMenuEl.appendChild(createSeparator())
-
-  contextMenuEl.appendChild(createMenuItem(t('context.insertFormula'), () => {
-    showFormulaDialog((latex) => insertFormulaToNode(node, latex))
-  }))
 
   contextMenuEl.appendChild(createMenuItem(t('context.addSummary'), () => {
     mindMap.execCommand('ADD_GENERALIZATION')

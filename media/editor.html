@@ -109,10 +109,6 @@
           <div id="node-panel-empty" class="panel-empty-hint">Select a node to edit its properties</div>
           <div id="node-panel-content" class="panel-page-content hidden">
             <div class="panel-section">
-              <label id="label-node-text" class="panel-label" for="node-text">Text</label>
-              <textarea id="node-text" class="panel-textarea" rows="3" placeholder="Node text"></textarea>
-            </div>
-            <div class="panel-section">
               <label id="label-node-note" class="panel-label" for="node-note">Note</label>
               <textarea id="node-note" class="panel-textarea" rows="3" placeholder="Add a note..."></textarea>
             </div>
@@ -242,17 +238,12 @@
 
   <div id="contextMenu" class="context-menu" style="display:none;"></div>
 
-  <!-- Formula input dialog -->
-  <div id="formulaDialog" class="formula-dialog hidden">
-    <div class="formula-dialog-panel">
-      <div id="formula-dialog-title" class="formula-dialog-title">Insert Formula</div>
-      <div id="formula-dialog-hint" class="formula-dialog-hint">LaTeX syntax, e.g. e=mc^2 or \frac{a}{b}</div>
-      <input id="formula-input" class="formula-input" type="text" spellcheck="false" autocomplete="off">
-      <div class="formula-dialog-actions">
-        <button type="button" id="formula-cancel" class="formula-btn formula-btn-secondary">Cancel</button>
-        <button type="button" id="formula-confirm" class="formula-btn formula-btn-primary">Insert</button>
-      </div>
-    </div>
+  <!-- Rich text floating toolbar -->
+  <div id="richTextToolbar" class="rich-text-toolbar" style="display:none;">
+    <button id="rt-bold" class="rich-text-btn" title="Bold"><b>B</b></button>
+    <button id="rt-italic" class="rich-text-btn" title="Italic"><i>I</i></button>
+    <button id="rt-underline" class="rich-text-btn" title="Underline"><u>U</u></button>
+    <button id="rt-strike" class="rich-text-btn" title="Strikethrough"><s>S</s></button>
   </div>
 
   <div id="statusBar" class="status-bar">

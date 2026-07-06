@@ -391,16 +391,11 @@ export function applyDomI18n() {
     'btn-search-close': 'search.close',
     'btn-replace': 'search.replace',
     'btn-replace-all': 'search.replaceAll',
+    'rt-bold': 'formula.bold',
+    'rt-italic': 'formula.italic',
+    'rt-underline': 'formula.underline',
+    'rt-strike': 'formula.strike',
   }
-
-  const formulaTitle = document.getElementById('formula-dialog-title')
-  if (formulaTitle) formulaTitle.textContent = t('formula.dialogTitle')
-  const formulaHint = document.getElementById('formula-dialog-hint')
-  if (formulaHint) formulaHint.textContent = t('formula.dialogHint')
-  const formulaConfirm = document.getElementById('formula-confirm')
-  if (formulaConfirm) formulaConfirm.textContent = t('formula.insert')
-  const formulaCancel = document.getElementById('formula-cancel')
-  if (formulaCancel) formulaCancel.textContent = t('formula.cancel')
 
   for (const [id, key] of Object.entries(titles)) {
     const el = document.getElementById(id)
@@ -424,7 +419,6 @@ export function applyDomI18n() {
     'label-bg-pattern-color': 'panel.bgPatternColor',
     'label-line-width': 'panel.lineWidth',
     'label-canvas-bg-color': 'panel.canvasBackground',
-    'label-node-text': 'panel.text',
     'label-node-note': 'panel.note',
     'label-node-comment': 'panel.comment',
     'label-node-link': 'panel.hyperlink',
@@ -444,7 +438,6 @@ export function applyDomI18n() {
   }
 
   const placeholders = {
-    'node-text': 'panel.textPlaceholder',
     'node-note': 'panel.notePlaceholder',
     'node-comment': 'panel.commentPlaceholder',
     'node-link-title': 'panel.linkTitlePlaceholder',
