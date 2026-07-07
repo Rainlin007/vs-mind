@@ -185,6 +185,7 @@ let viewDebounceTimer = null
 let activeNodes = []
 let isPainterMode = false
 let hasPendingEdit = false
+let isTextEditing = false
 let lastSyncedJSON = ''
 let currentLayout = 'logicalStructure'
 let currentTheme = 'default'
@@ -235,7 +236,6 @@ function applyLayout(layout) {
   mindMap.setLayout(layout)
   setCurrentLayout(layout)
   updateLineStyleControls()
-  syncDocumentFromMindMap()
 }
 
 function applyTheme(theme) {
@@ -244,7 +244,6 @@ function applyTheme(theme) {
   setCurrentTheme(theme)
   updateCanvasSettingsPanel()
   updateLineStyleControls()
-  syncDocumentFromMindMap()
 }
 
 function syncDocumentFromMindMap() {
@@ -342,7 +341,6 @@ function applyRainbowLinesConfig(config) {
 function selectRainbowPreset(presetId) {
   if (!mindMap || !mindMap.rainbowLines) return
   applyRainbowLinesConfig(buildRainbowLinesConfig(presetId))
-  syncDocumentFromMindMap()
 }
 
 // ===== Background Pattern =====
@@ -789,7 +787,10 @@ function bindMindMapEvents() {
   mindMap.on('node_text_edit_change', ({ node, text, richText }) => {
     node.nodeData.data.text = text
     if (richText !== undefined) node.nodeData.data.richText = richText
-    scheduleDocumentSync()
+    if (!isTextEditing) {
+      isTextEditing = true
+      scheduleDocumentSync()
+    }
   })
   mindMap.on('rich_text_selection_change', (hasRange, rect, formatInfo) => {
     if (hasRange && rect) {
@@ -799,6 +800,7 @@ function bindMindMapEvents() {
     }
   })
   mindMap.on('hide_text_edit', () => {
+    isTextEditing = false
     hideRichTextToolbar()
     requestAnimationFrame(() => {
       mindMap.keyCommand.recovery()
@@ -1209,7 +1211,6 @@ function patchThemeConfig(patch) {
     ...mindMap.getCustomThemeConfig(),
     ...patch,
   })
-  syncDocumentFromMindMap()
 }
 
 function renderLineStyleSelect() {
@@ -1260,7 +1261,7 @@ function resetThemePanelSettings() {
   if (bgPatternOpacityValue) bgPatternOpacityValue.textContent = `${currentBgPatternOpacity}%`
   applyBackgroundPattern()
   updateThemePanel()
-  syncDocumentFromMindMap()
+  scheduleDocumentSync()
 }
 
 function resetNodePanelSettings() {
@@ -1272,7 +1273,6 @@ function resetNodePanelSettings() {
   mindMap.execCommand('SET_NODE_TAG', node, [])
   mindMap.execCommand('SET_NODE_DATA', node, { comment: '' })
   updateSidePanel()
-  syncDocumentFromMindMap()
 }
 
 function setNodePanelFieldsEnabled(enabled) {
@@ -1472,14 +1472,14 @@ bindSidePanelField(rainbowLinesSelect, 'change', () => {
 bindSidePanelField(bgPatternSelect, 'change', () => {
   currentBgPattern = bgPatternSelect.value
   applyBackgroundPattern()
-  syncDocumentFromMindMap()
+  scheduleDocumentSync()
 })
 
 if (bgPatternColorInput) {
   bgPatternColorInput.addEventListener('input', () => {
     currentBgPatternColor = bgPatternColorInput.value
     applyBackgroundPattern()
-    syncDocumentFromMindMap()
+    scheduleDocumentSync()
   })
 }
 
@@ -1490,7 +1490,7 @@ if (bgPatternOpacityInput) {
     applyBackgroundPattern()
   })
   bgPatternOpacityInput.addEventListener('change', () => {
-    syncDocumentFromMindMap()
+    scheduleDocumentSync()
   })
 }
 
