@@ -1,3 +1,4 @@
 [submodule "vendor/mind-map"]
 	path = vendor/mind-map
 	url = https://github.com/Rainlin007/mind-map.git
+	branch = develop
