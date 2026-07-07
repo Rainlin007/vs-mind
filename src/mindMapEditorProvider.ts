@@ -231,6 +231,24 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
       }
     )
 
+    let flushResolve: (() => void) | null = null
+
+    const willSaveSubscription = vscode.workspace.onWillSaveTextDocument((e) => {
+      if (e.document.uri.toString() !== document.uri.toString()) return
+      e.waitUntil(
+        new Promise<vscode.TextEdit[]>((resolve) => {
+          flushResolve = () => resolve([])
+          webview.postMessage({ type: 'flushBeforeSave' })
+          setTimeout(() => {
+            if (flushResolve) {
+              flushResolve = null
+              resolve([])
+            }
+          }, 200)
+        })
+      )
+    })
+
     webview.onDidReceiveMessage(async (message) => {
       switch (message.type) {
         case 'ready':
@@ -257,6 +275,10 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
             await vscode.workspace.applyEdit(edit)
           } finally {
             isUpdatingFromWebview = false
+          }
+          if (flushResolve) {
+            flushResolve()
+            flushResolve = null
           }
           break
         }
@@ -302,6 +324,13 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
           break
         }
 
+        case 'flushed':
+          if (flushResolve) {
+            flushResolve()
+            flushResolve = null
+          }
+          break
+
         case 'info':
           vscode.window.showInformationMessage(message.text)
           break
@@ -332,6 +361,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 
     webviewPanel.onDidDispose(() => {
       changeDocumentSubscription.dispose()
+      willSaveSubscription.dispose()
       themeSubscription.dispose()
       configSubscription.dispose()
       if (MindMapEditorProvider.activeWebview === webview) {

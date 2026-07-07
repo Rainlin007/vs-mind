@@ -786,6 +786,11 @@ function bindMindMapEvents() {
   mindMap.on('scale', onScaleChange)
   mindMap.on('node_active', onNodeActive)
   mindMap.on('node_contextmenu', onNodeContextMenu)
+  mindMap.on('node_text_edit_change', ({ node, text, richText }) => {
+    node.nodeData.data.text = text
+    if (richText !== undefined) node.nodeData.data.richText = richText
+    scheduleDocumentSync()
+  })
   mindMap.on('rich_text_selection_change', (hasRange, rect, formatInfo) => {
     if (hasRange && rect) {
       showRichTextToolbar(rect, formatInfo)
@@ -1780,6 +1785,16 @@ window.addEventListener('message', (event) => {
       break
     case 'languageChanged':
       applyLanguage(message.language)
+      break
+    case 'flushBeforeSave':
+      if (mindMap && mindMap.renderer.textEdit.isShowTextEdit()) {
+        mindMap.renderer.textEdit.hideEditTextBox()
+      }
+      if (hasPendingEdit) {
+        flushEdit()
+      } else {
+        vscode.postMessage({ type: 'flushed' })
+      }
       break
     case 'command':
       handleCommand(message.command)

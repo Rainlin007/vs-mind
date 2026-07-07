@@ -68,6 +68,10 @@ function makeTheme({
       borderWidth: 0,
       borderRadius: 6,
       fontSize: 14,
+      paddingX: 10,
+      paddingY: 5,
+      marginY: 15,
+      marginX: 50
     },
     generalization: {
       shape: 'roundedRectangle',
