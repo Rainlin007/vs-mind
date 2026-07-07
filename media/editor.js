@@ -27,6 +27,10 @@ import {
   getRainbowPresetById,
   resolveRainbowPresetId,
 } from './rainbowLines.js'
+import {
+  getLineStylesForLayout,
+  normalizeLineStyleForLayout,
+} from './lineStyle.js'
 
 registerThemes(MindMap)
 
@@ -230,6 +234,7 @@ function applyLayout(layout) {
   if (!mindMap || layout === currentLayout) return
   mindMap.setLayout(layout)
   setCurrentLayout(layout)
+  updateLineStyleControls()
   syncDocumentFromMindMap()
 }
 
@@ -238,6 +243,7 @@ function applyTheme(theme) {
   mindMap.setTheme(theme)
   setCurrentTheme(theme)
   updateCanvasSettingsPanel()
+  updateLineStyleControls()
   syncDocumentFromMindMap()
 }
 
@@ -451,6 +457,7 @@ const nodeBgOpacity = $('node-bg-opacity')
 const nodeFontSize = $('node-font-size')
 const themeSelect = $('theme-select')
 const layoutSelect = $('layout-select')
+const lineStyleSelect = $('line-style-select')
 const rainbowLinesSelect = $('rainbow-lines-select')
 const rainbowLinesPreviewEl = $('rainbow-lines-preview')
 const bgPatternSelect = $('bg-pattern-select')
@@ -1170,6 +1177,47 @@ function switchSidePanelTab(tab) {
   })
 }
 
+function patchThemeConfig(patch) {
+  if (!mindMap) return
+  mindMap.setThemeConfig({
+    ...mindMap.getCustomThemeConfig(),
+    ...patch,
+  })
+  syncDocumentFromMindMap()
+}
+
+function renderLineStyleSelect() {
+  if (!lineStyleSelect) return
+  const currentValue = mindMap?.getThemeConfig('lineStyle') || 'straight'
+  const options = getLineStylesForLayout(currentLayout)
+  lineStyleSelect.innerHTML = ''
+  for (const option of options) {
+    const el = document.createElement('option')
+    el.value = option.value
+    el.textContent = option.label
+    lineStyleSelect.appendChild(el)
+  }
+  const normalized = normalizeLineStyleForLayout(currentLayout, currentValue)
+  lineStyleSelect.value = normalized
+}
+
+function setThemeLineStyle(value) {
+  if (!mindMap || !value) return
+  const normalized = normalizeLineStyleForLayout(currentLayout, value)
+  if (lineStyleSelect) lineStyleSelect.value = normalized
+  patchThemeConfig({ lineStyle: normalized })
+}
+
+function updateLineStyleControls() {
+  renderLineStyleSelect()
+  if (!mindMap) return
+  const currentValue = mindMap.getThemeConfig('lineStyle') || 'straight'
+  const normalized = normalizeLineStyleForLayout(currentLayout, currentValue)
+  if (normalized !== currentValue) {
+    patchThemeConfig({ lineStyle: normalized })
+  }
+}
+
 function resetThemePanelSettings() {
   if (!mindMap) return
   const themeName = mindMap.getTheme()
@@ -1224,6 +1272,7 @@ function setNodePanelFieldsEnabled(enabled) {
 function updateThemePanel() {
   renderThemeSelect()
   renderLayoutSelect()
+  updateLineStyleControls()
   updateCanvasSettingsPanel()
 }
 
@@ -1421,6 +1470,10 @@ if (bgPatternOpacityInput) {
 
 bindSidePanelField(layoutSelect, 'change', () => {
   applyLayout(layoutSelect.value)
+})
+
+bindSidePanelField(lineStyleSelect, 'change', () => {
+  setThemeLineStyle(lineStyleSelect.value)
 })
 
 for (const tabButton of sidePanelTabs) {

@@ -2,6 +2,11 @@
 
 All notable changes to **VS Mind** are documented in this file.
 
+## [1.0.17] - 2026-07-07
+
+### Added
+- Theme side panel: **Line Style** dropdown (straight, curve, direct) with layout-aware options
+
 ## [1.0.16] - 2026-07-07
 
 ### Added
