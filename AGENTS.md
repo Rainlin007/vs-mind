@@ -27,3 +27,7 @@ npm install
 npm run build
 npm run watch
 ```
+
+## 注意点
+
+1. simple-mind-map 已经 fork，尽量避免在插件里面 patch，可以直接改原库；

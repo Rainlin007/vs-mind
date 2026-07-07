@@ -677,6 +677,12 @@ function initMindMap(data, config) {
         enableEditFormulaInRichTextEdit: true,
         katexFontPath: config?.katexFontPath || '',
         getKatexOutputType: () => 'html',
+        openPerformance: true,
+        performanceConfig: {
+          time: 100,
+          padding: 200,
+          removeNodeWhenOutCanvas: true,
+        },
         scaleRatio: 0.03,
         exportPaddingX: 20,
         exportPaddingY: 20,
@@ -691,20 +697,35 @@ function initMindMap(data, config) {
           console.error('MindMap error:', code, err)
           vscode.postMessage({ type: 'error', text: t('error.initFailed', { message: err?.message || code }) })
         },
-        customHandleMousewheel: (e) => {
-          e.preventDefault()
-          if (e.ctrlKey) {
-            if (e.deltaY > 0) {
-              mindMap.view.narrow()
-            } else if (e.deltaY < 0) {
-              mindMap.view.enlarge()
+        customHandleMousewheel: (() => {
+          let rafId = 0
+          let accX = 0
+          let accY = 0
+          return (e) => {
+            e.preventDefault()
+            if (e.ctrlKey) {
+              if (e.deltaY > 0) {
+                mindMap.view.narrow()
+              } else if (e.deltaY < 0) {
+                mindMap.view.enlarge()
+              }
+              return
             }
-          } else {
             const factor = 0.5
-            mindMap.view.translateX(-e.deltaX * factor)
-            mindMap.view.translateY(-e.deltaY * factor)
+            accX += -e.deltaX * factor
+            accY += -e.deltaY * factor
+            if (!rafId) {
+              rafId = requestAnimationFrame(() => {
+                rafId = 0
+                const dx = accX
+                const dy = accY
+                accX = 0
+                accY = 0
+                mindMap.view.translateXY(dx, dy)
+              })
+            }
           }
-        },
+        })(),
       })
     } catch (err) {
       console.error('MindMap init failed:', err)
