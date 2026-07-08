@@ -1,0 +1,80 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "npm: compile",
+            "type": "npm",
+            "script": "compile",
+            "group": "build",
+            "problemMatcher": "$tsc",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "vendor-mind-elixir",
+            "type": "shell",
+            "command": "node scripts/vendor-mind-elixir.js",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "tsc: watch",
+            "type": "shell",
+            "command": "tsc -watch -p ./",
+            "isBackground": true,
+            "problemMatcher": "$tsc-watch",
+            "presentation": {
+                "reveal": "never",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "esbuild: watch",
+            "type": "shell",
+            "command": "node esbuild.js --watch",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "esbuild",
+                "pattern": {
+                    "regexp": "^(.*)$",
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^\\[watch\\]",
+                    "endsPattern": "watching for changes"
+                }
+            },
+            "presentation": {
+                "reveal": "never",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "watch: parallel",
+            "dependsOn": [
+                "tsc: watch",
+                "esbuild: watch"
+            ],
+            "dependsOrder": "parallel",
+            "problemMatcher": []
+        },
+        {
+            "label": "npm: watch",
+            "dependsOn": [
+                "vendor-mind-elixir",
+                "watch: parallel"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

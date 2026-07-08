@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;" />
+  <title>VS Mind Webview Debug</title>
+  <link href="../media/main.css" rel="stylesheet" />
+  <link href="../media/MindElixir.css" rel="stylesheet" />
+  <style>
+    #debug-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 10000;
+      padding: 8px 12px;
+      font: 12px/1.4 monospace;
+      background: #1e1e1e;
+      color: #ccc;
+      border-top: 1px solid #454545;
+      max-height: 120px;
+      overflow: auto;
+    }
+    #debug-bar .pass { color: #4ec9b0; }
+    #debug-bar .fail { color: #f48771; }
+  </style>
+</head>
+<body>
+  <div class="main-content">
+    <div class="map-area">
+      <div id="bgPatternOverlay" class="bg-pattern-overlay"></div>
+      <div id="mindmap"></div>
+    </div>
+    <aside id="side-panel" class="side-panel">
+      <div id="side-panel-resizer" class="side-panel-resizer" title="拖动调整宽度"></div>
+      <div class="side-panel-header">
+        <div class="side-panel-tabs">
+          <button id="panel-tab-node" class="side-panel-tab active" type="button" data-panel="node">节点</button>
+          <button id="panel-tab-theme" class="side-panel-tab" type="button" data-panel="theme">主题</button>
+        </div>
+        <button id="btn-close-panel" class="panel-close-btn" type="button">&times;</button>
+      </div>
+      <div class="side-panel-body">
+        <div id="panel-page-node" class="panel-page active">
+          <div id="node-panel-empty" class="panel-empty-hint">选择一个节点以编辑样式</div>
+          <div id="node-panel-content" class="panel-page-content hidden">
+            <div class="panel-section">
+              <label class="panel-label" for="inspector-size">字号</label>
+              <select id="inspector-size" class="panel-select">
+                <option value="">默认</option>
+                <option value="16px">16</option>
+              </select>
+            </div>
+            <div class="panel-section">
+              <input type="color" id="inspector-color" class="panel-color" value="#000000" />
+              <button id="inspector-bold" class="style-toggle-btn" type="button">B</button>
+              <button id="inspector-italic" class="style-toggle-btn" type="button">I</button>
+            </div>
+          </div>
+        </div>
+        <div id="panel-page-theme" class="panel-page">
+          <div class="panel-section">
+            <select id="theme-select" class="panel-select"></select>
+            <select id="direction-select" class="panel-select"></select>
+            <select id="line-style-select" class="panel-select"></select>
+            <select id="bg-pattern-select" class="panel-select">
+              <option value="none">无</option>
+              <option value="dots">点阵</option>
+              <option value="grid">网格</option>
+              <option value="crossDot">十字点</option>
+            </select>
+            <input id="bg-pattern-color" class="panel-color" type="color" value="#808080" />
+            <input id="bg-pattern-opacity" class="style-opacity" type="range" min="5" max="100" step="5" value="5" />
+            <span id="bg-pattern-opacity-value" class="style-opacity-value">5%</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div id="debug-bar">loading...</div>
+
+  <script>
+    window.__TEST__ = { logs: [], errors: [], done: false, passed: false };
+
+    function log(msg, ok) {
+      window.__TEST__.logs.push({ msg, ok });
+      const el = document.getElementById('debug-bar');
+      const line = document.createElement('div');
+      line.className = ok ? 'pass' : 'fail';
+      line.textContent = (ok ? '✓ ' : '✗ ') + msg;
+      el.appendChild(line);
+    }
+
+    window.addEventListener('error', (e) => {
+      window.__TEST__.errors.push(e.message || String(e.error));
+      log('uncaught: ' + (e.message || e.error), false);
+    });
+
+    const defaultDoc = {
+      nodeData: { id: 'root', topic: 'Central Topic', root: true, children: [] },
+      arrows: [],
+      themeTemplate: 'clayLight',
+      backgroundPattern: 'grid',
+      bgPatternColor: '#808080',
+      bgPatternOpacity: 5,
+      direction: 1,
+      lineStyle: 'curve',
+    };
+
+    function acquireVsCodeApi() {
+      return {
+        getState: () => ({}),
+        setState: () => {},
+        postMessage: (msg) => { window.__TEST__.lastMessage = msg; },
+      };
+    }
+
+    async function runTests() {
+      document.getElementById('debug-bar').textContent = '';
+      log('MindElixir loaded: ' + !!window.MindElixir, !!window.MindElixir);
+
+      await new Promise((r) => setTimeout(r, 100));
+      window.postMessage({ type: 'update', text: JSON.stringify(defaultDoc), images: {} }, '*');
+      await new Promise((r) => setTimeout(r, 300));
+
+      log('mind map rendered', !!document.querySelector('me-tpc'));
+      log('side panel visible', !document.getElementById('side-panel').classList.contains('hidden'));
+
+      document.getElementById('btn-close-panel').click();
+      await new Promise((r) => setTimeout(r, 50));
+      log('side panel collapses', document.getElementById('side-panel').classList.contains('hidden'));
+
+      window.postMessage({ type: 'toggleSidePanel' }, '*');
+      await new Promise((r) => setTimeout(r, 50));
+      log('side panel expands via message', !document.getElementById('side-panel').classList.contains('hidden'));
+
+      const panel = document.getElementById('side-panel');
+      const resizer = document.getElementById('side-panel-resizer');
+      const startWidth = panel.offsetWidth;
+      resizer.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: window.innerWidth - startWidth - 40 }));
+      document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: window.innerWidth - startWidth - 80 }));
+      document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 50));
+      log('side panel resizes wider', panel.offsetWidth > startWidth);
+
+      document.getElementById('panel-tab-theme').click();
+      await new Promise((r) => setTimeout(r, 50));
+      log('theme tab active', document.getElementById('panel-page-theme').classList.contains('active'));
+
+      const select = document.getElementById('theme-select');
+      select.value = 'auroraDark';
+      select.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 200));
+      log('theme switch', !window.__TEST__.errors.length);
+
+      const directionSelect = document.getElementById('direction-select');
+      log('layout options populated', directionSelect.options.length >= 3);
+      directionSelect.value = '0';
+      directionSelect.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 100));
+      log('layout switch', !window.__TEST__.errors.length);
+
+      const lineStyleSelect = document.getElementById('line-style-select');
+      log('line style options populated', lineStyleSelect.options.length >= 4);
+      lineStyleSelect.value = 'straight';
+      lineStyleSelect.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 100));
+      log('line style switch', !window.__TEST__.errors.length);
+
+      const ltToolbar = document.querySelector('.mind-elixir-toolbar.lt');
+      log('left toolbar hidden', !ltToolbar || getComputedStyle(ltToolbar).display === 'none');
+
+      const overlay = document.getElementById('bgPatternOverlay');
+      const patternSelect = document.getElementById('bg-pattern-select');
+      patternSelect.value = 'dots';
+      patternSelect.dispatchEvent(new Event('change'));
+      log('bg pattern dots', overlay.style.backgroundImage.includes('radial-gradient'));
+
+      const noErrors = window.__TEST__.errors.length === 0;
+      window.__TEST__.done = true;
+      window.__TEST__.passed = noErrors;
+      log(noErrors ? 'ALL TESTS PASSED' : 'TESTS FAILED', noErrors);
+    }
+  </script>
+  <script src="../media/MindElixir.js"></script>
+  <script src="../media/main.js"></script>
+  <script>window.addEventListener('load', () => runTests());</script>
+</body>
+</html>

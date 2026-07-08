@@ -1,0 +1,26 @@
+{
+  "nodeData": {
+    "id": "root",
+    "topic": "Central Topic",
+    "root": true,
+    "children": [
+      {
+        "topic": "Idea 1",
+        "id": "idea1",
+        "children": [
+          { "topic": "Sub-idea 1.1", "id": "sub1.1" },
+          { "topic": "Sub-idea 1.2", "id": "sub1.2" }
+        ]
+      },
+      {
+        "topic": "Idea 2",
+        "id": "idea2",
+        "children": [
+          { "topic": "Sub-idea 2.1", "id": "sub2.1" }
+        ]
+      },
+      { "topic": "Idea 3", "id": "idea3" }
+    ]
+  },
+  "linkData": {}
+}

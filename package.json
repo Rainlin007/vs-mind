@@ -1,0 +1,121 @@
+{
+  "name": "vs-mind",
+  "displayName": "VS Mind",
+  "description": "A VS Code extension that provides a visual mind map editor",
+  "publisher": "rainlin",
+  "icon": "media/icon.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rainlin007/vs-mind.git"
+  },
+  "homepage": "https://github.com/Rainlin007/vs-mind#readme",
+  "bugs": {
+    "url": "https://github.com/Rainlin007/vs-mind/issues"
+  },
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "version": "2.0.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "keywords": [
+    "mindmap",
+    "mind-elixir",
+    "visualization",
+    "planner",
+    "idea",
+    "brainstorm"
+  ],
+  "categories": [
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onCustomEditor:vscode-mm.mindmap"
+  ],
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "main": "./out/frameworks/vscode/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "vscode-mm.toggleSidePanel",
+                "title": "属性面板",
+                "icon": "$(layout-sidebar-right)"
+            }
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "vscode-mm.toggleSidePanel",
+                    "when": "activeCustomEditorId == vscode-mm.mindmap",
+                    "group": "navigation"
+                }
+            ]
+        },
+        "customEditors": [
+      {
+        "viewType": "vscode-mm.mindmap",
+        "displayName": "Mind Map",
+        "selector": [
+          {
+            "filenamePattern": "*.mm"
+          },
+          {
+            "filenamePattern": "*.mindmap"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
+  },
+  "scripts": {
+    "postinstall": "node scripts/vendor-mind-elixir.js",
+    "vendor": "node scripts/vendor-mind-elixir.js",
+    "vscode:prepublish": "npm run compile",
+    "compile": "node scripts/vendor-mind-elixir.js && tsc -p ./ && node esbuild.js",
+    "watch": "node scripts/vendor-mind-elixir.js && tsc -watch -p ./",
+    "watch:webview": "node esbuild.js --watch",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "node ./out/test/runTest.js",
+    "test:devcontainer": "xvfb-run -a npm test",
+    "test:webview": "mocha out/test/webview/main.test.js",
+    "test:browser": "node scripts/browser-test.mjs",
+    "test:unit": "mocha out/test/unit/**/*.test.js",
+    "test:all": "npm run test:unit && npm run test:webview && npm run test",
+    "test:all:devcontainer": "npm run test:devcontainer && npm run test:webview",
+    "package": "vsce package",
+    "build": "npm run compile && npm run package"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/glob": "^8.0.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^22.0.0",
+    "@types/sinon": "^21.0.0",
+    "@types/vscode": "^1.74.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/ui": "^4.0.16",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.0.0",
+    "glob": "^11.0.0",
+    "jsdom": "^27.4.0",
+    "jsdom-global": "^3.0.2",
+    "linkedom": "^0.18.12",
+    "mind-elixir": "5.13.0",
+    "mocha": "^11.0.0",
+    "puppeteer": "^25.3.0",
+    "sinon": "^21.0.1",
+    "typescript": "^4.9.3",
+    "typescript-eslint": "^8.51.0",
+    "vitest": "^4.0.16"
+  }
+}

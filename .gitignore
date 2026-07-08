@@ -1,0 +1,9 @@
+
+node_modules
+out
+.vscode-test
+*.vsix
+media/main.js
+media/main.js.map
+media/MindElixir.js
+media/MindElixir.css
