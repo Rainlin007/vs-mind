@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { MindMapService } from '../../usecases/MindMapService';
 import { VSCodeImageRepository } from './VSCodeImageRepository';
+import { NODE_PANEL_SECTIONS_HTML } from '../webview/nodePanelHtml';
 
 export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 
@@ -128,6 +129,11 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                         await this.service.saveImages(document.uri.fsPath, e.images);
                     }
                     return;
+                case 'openExternal':
+                    if (typeof e.url === 'string' && e.url) {
+                        await vscode.env.openExternal(vscode.Uri.parse(e.url));
+                    }
+                    return;
             }
         });
 
@@ -159,6 +165,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'main.js'));
         const mindElixirScriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'MindElixir.js'));
         const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'main.css'));
+        const katexStyleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'katex.min.css'));
 
         // Use a nonce to whitelist which scripts can be run
         const nonce = getNonce();
@@ -170,9 +177,10 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 				<meta charset="UTF-8">
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 				
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} 'self' data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; connect-src ${webview.cspSource};">
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} 'self' data:; font-src ${webview.cspSource} 'self'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; connect-src ${webview.cspSource};">
 
 				<link href="${styleMainUri}" rel="stylesheet" />
+				<link href="${katexStyleUri}" rel="stylesheet" />
 				<title>Mind Map</title>
 			</head>
 			<body>
@@ -221,13 +229,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 											<span class="color-swatch" data-color="#9b59b6" style="background-color: #9b59b6;"></span>
 										</div>
 									</div>
-									<div class="panel-section">
-										<label class="panel-label">样式</label>
-										<div class="style-btn-row">
-											<button id="inspector-bold" class="style-toggle-btn" type="button" title="粗体">B</button>
-											<button id="inspector-italic" class="style-toggle-btn" type="button" title="斜体">I</button>
-										</div>
-									</div>
+									${NODE_PANEL_SECTIONS_HTML}
 								</div>
 							</div>
 							<div id="panel-page-theme" class="panel-page">

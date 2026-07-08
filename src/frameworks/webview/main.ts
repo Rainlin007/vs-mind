@@ -5,6 +5,8 @@ import type { MindElixirData, NodeObj, Options, Theme } from 'mind-elixir';
 import { prepareMindData, ThemePanel } from './ThemePanel';
 import type { ThemeDocumentSettings } from './ThemePanel';
 import { DEFAULT_SIDE_PANEL_WIDTH, SidePanel } from './SidePanel';
+import { createMindElixirMarkdownParser } from './markdown';
+import { NodeInspector } from './NodeInspector';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -36,6 +38,7 @@ interface MindElixirInstance {
     container: HTMLElement;
     selectNode(node: HTMLElement | NodeObj): void;
     reshapeNode(node: MindElixirInstance['currentNode'], patch: Partial<NodeObj>): void;
+    findEle(id: string): MindElixirInstance['currentNode'];
 }
 
 interface MindElixirCtor {
@@ -171,120 +174,6 @@ export class ImageModal {
 }
 
 /**
- * Handles the style inspector panel.
- */
-export class StyleInspector {
-    private content: HTMLElement | null;
-    private emptyHint: HTMLElement | null;
-    private sizeInput: HTMLSelectElement;
-    private colorInput: HTMLInputElement;
-    private boldBtn: HTMLElement | null;
-    private italicBtn: HTMLElement | null;
-
-    constructor(private readonly mind: MindElixirInstance) {
-        this.content = document.getElementById('node-panel-content');
-        this.emptyHint = document.getElementById('node-panel-empty');
-        this.sizeInput = document.getElementById('inspector-size') as HTMLSelectElement;
-        this.colorInput = document.getElementById('inspector-color') as HTMLInputElement;
-        this.boldBtn = document.getElementById('inspector-bold');
-        this.italicBtn = document.getElementById('inspector-italic');
-
-        this.initListeners();
-    }
-
-    initListeners() {
-        if (!this.content) return;
-
-        this.sizeInput.addEventListener('change', () => this.updateStyle('fontSize', this.sizeInput.value));
-        this.colorInput.addEventListener('input', () => this.updateStyle('color', this.colorInput.value));
-        this.boldBtn?.addEventListener('click', () => {
-            const isBold = this.boldBtn?.classList.contains('active');
-            this.updateStyle('fontWeight', isBold ? 'normal' : 'bold');
-            this.boldBtn?.classList.toggle('active');
-        });
-        this.italicBtn?.addEventListener('click', () => {
-            const isItalic = this.italicBtn?.classList.contains('active');
-            this.updateStyle('fontStyle', isItalic ? 'normal' : 'italic');
-            this.italicBtn?.classList.toggle('active');
-        });
-
-        const swatches = this.content.querySelectorAll('.color-swatch');
-        swatches.forEach(swatch => {
-            swatch.addEventListener('click', () => {
-                const color = swatch.getAttribute('data-color');
-                if (color) {
-                    this.colorInput.value = color;
-                    this.updateStyle('color', color);
-                }
-            });
-        });
-    }
-
-    updateStyle(prop: string, value: string) {
-        const node = this.mind.currentNode;
-        if (!node) return;
-
-        const currentStyle: Record<string, string> = { ...(node.style as Record<string, string> | undefined) };
-
-        // Define allowlist
-        const allowList = ['fontSize', 'color', 'fontWeight', 'fontStyle', 'background'] as const;
-
-        const newStyle: Record<string, string> = {};
-
-        // Copy only allowlisted properties
-        for (const key of allowList) {
-            if (currentStyle[key]) {
-                newStyle[key] = currentStyle[key];
-            }
-        }
-
-        // Apply the new change
-        newStyle[prop] = value;
-
-        // Clean up empty values
-        if (value === '') {
-            delete newStyle[prop];
-        }
-
-        this.mind.reshapeNode(node, { style: newStyle as NodeObj['style'] });
-
-        if (this.mind.container) {
-            this.mind.container.focus();
-        }
-    }
-
-    show(node: any) {
-        if (!this.content || !this.emptyHint) return;
-
-        const style = node.style || {};
-
-        this.sizeInput.value = style.fontSize || '';
-        this.colorInput.value = style.color || '#000000';
-
-        if (style.fontWeight === 'bold') {
-            this.boldBtn?.classList.add('active');
-        } else {
-            this.boldBtn?.classList.remove('active');
-        }
-
-        if (style.fontStyle === 'italic') {
-            this.italicBtn?.classList.add('active');
-        } else {
-            this.italicBtn?.classList.remove('active');
-        }
-
-        this.emptyHint.classList.add('hidden');
-        this.content.classList.remove('hidden');
-    }
-
-    hide() {
-        if (!this.content || !this.emptyHint) return;
-        this.emptyHint.classList.remove('hidden');
-        this.content.classList.add('hidden');
-    }
-}
-
-/**
  * Main application class
  */
 export class MindMapApp {
@@ -294,7 +183,7 @@ export class MindMapApp {
     private lastSelectedNode: HTMLElement | null = null;
     public mind: MindElixirInstance;
     private imageModal: ImageModal;
-    private inspector: StyleInspector;
+    private inspector: NodeInspector;
     private themePanel: ThemePanel;
     private sidePanel: SidePanel;
 
@@ -311,10 +200,11 @@ export class MindMapApp {
             contextMenu: true,
             toolBar: true,
             keypress: true,
+            markdown: createMindElixirMarkdownParser() as Options['markdown'],
         });
 
         this.imageModal = new ImageModal(this.lastSelectedNode, this.mind);
-        this.inspector = new StyleInspector(this.mind);
+        this.inspector = new NodeInspector(this.mind, () => this.saveChanges());
         this.themePanel = new ThemePanel(this.mind, () => this.saveChanges());
         const sidePanelWidth = typeof this.state.sidePanelWidth === 'number'
             ? this.state.sidePanelWidth
@@ -330,6 +220,16 @@ export class MindMapApp {
         this.vscode.postMessage({ type: 'sidePanelState', visible: this.sidePanel.isVisible() });
 
         this.initListeners();
+        this.syncNodePanel();
+    }
+
+    private syncNodePanel() {
+        const current = this.mind.currentNode;
+        if (current?.nodeObj) {
+            this.inspector.show(current.nodeObj);
+            return;
+        }
+        this.inspector.hide();
     }
 
     initListeners() {
@@ -343,13 +243,13 @@ export class MindMapApp {
 
         this.mind.bus.addListener('operation', (operation: any) => this.handleOperation(operation));
 
-        this.mind.bus.addListener('selectNodes', (nodes: any) => {
-            if (nodes && nodes.length > 0) {
-                this.sidePanel.switchTab('node');
-                this.inspector.show(nodes[0]);
-            } else {
-                this.inspector.hide();
-            }
+        this.mind.bus.addListener('selectNodes', () => {
+            this.sidePanel.switchTab('node');
+            this.syncNodePanel();
+        });
+
+        this.mind.bus.addListener('unselectNodes', () => {
+            this.syncNodePanel();
         });
     }
 
@@ -390,7 +290,11 @@ export class MindMapApp {
                             if (this.mind.container) {
                                 this.mind.container.focus();
                             }
+                        } else {
+                            this.syncNodePanel();
                         }
+                    } else {
+                        this.syncNodePanel();
                     }
 
                     if (message.images && Object.keys(message.images).length > 0) {
@@ -459,6 +363,13 @@ export class MindMapApp {
 
     handleMindMapClick(e: MouseEvent) {
         const target = e.target as HTMLElement;
+
+        const link = target.closest('.hyper-link') as HTMLAnchorElement | null;
+        if (link?.href) {
+            e.preventDefault();
+            this.vscode.postMessage({ type: 'openExternal', url: link.href });
+            return;
+        }
 
         const img = target.tagName === 'IMG' ? target : target.closest('me-tpc')?.querySelector('img');
 

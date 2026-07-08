@@ -40,24 +40,24 @@
     "workspace"
   ],
   "main": "./out/frameworks/vscode/extension.js",
-    "contributes": {
-        "commands": [
-            {
-                "command": "vscode-mm.toggleSidePanel",
-                "title": "属性面板",
-                "icon": "$(layout-sidebar-right)"
-            }
-        ],
-        "menus": {
-            "editor/title": [
-                {
-                    "command": "vscode-mm.toggleSidePanel",
-                    "when": "activeCustomEditorId == vscode-mm.mindmap",
-                    "group": "navigation"
-                }
-            ]
-        },
-        "customEditors": [
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscode-mm.toggleSidePanel",
+        "title": "属性面板",
+        "icon": "$(layout-sidebar-right)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "vscode-mm.toggleSidePanel",
+          "when": "activeCustomEditorId == vscode-mm.mindmap",
+          "group": "navigation"
+        }
+      ]
+    },
+    "customEditors": [
       {
         "viewType": "vscode-mm.mindmap",
         "displayName": "Mind Map",
@@ -109,7 +109,9 @@
     "glob": "^11.0.0",
     "jsdom": "^27.4.0",
     "jsdom-global": "^3.0.2",
+    "katex": "^0.16.47",
     "linkedom": "^0.18.12",
+    "marked": "^15.0.12",
     "mind-elixir": "5.13.0",
     "mocha": "^11.0.0",
     "puppeteer": "^25.3.0",

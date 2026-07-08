@@ -179,6 +179,33 @@ body {
     outline: none;
 }
 
+.panel-input,
+.panel-textarea {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--vscode-input-border);
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border-radius: 3px;
+    font-size: 12px;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.panel-textarea {
+    resize: vertical;
+    min-height: 56px;
+    line-height: 1.4;
+}
+
+.panel-hint {
+    margin: 4px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--vscode-descriptionForeground);
+}
+
 .style-row {
     display: flex;
     flex-direction: column;
@@ -218,30 +245,6 @@ body {
     color: var(--vscode-descriptionForeground);
     min-width: 32px;
     text-align: right;
-}
-
-.style-btn-row {
-    display: flex;
-    gap: 6px;
-}
-
-.style-toggle-btn {
-    background-color: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-    border: none;
-    padding: 4px 12px;
-    cursor: pointer;
-    border-radius: 3px;
-    font-weight: 600;
-}
-
-.style-toggle-btn:hover {
-    background-color: var(--vscode-button-secondaryHoverBackground);
-}
-
-.style-toggle-btn.active {
-    background-color: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
 }
 
 .color-palette {
