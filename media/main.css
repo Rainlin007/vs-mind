@@ -395,8 +395,13 @@ body {
     display: none !important;
 }
 
-/* Ensure mind-elixir input box is visible */
+/* MindElixir disables text selection on the map; re-enable only in the inline editor */
 .mind-elixir-input,
 #input-box {
     z-index: 99999 !important;
+}
+
+#input-box {
+    user-select: text !important;
+    -webkit-user-select: text !important;
 }

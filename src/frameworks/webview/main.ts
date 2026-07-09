@@ -8,6 +8,7 @@ import { DEFAULT_SIDE_PANEL_WIDTH, SidePanel } from './SidePanel';
 import { createMindElixirMarkdownParser } from './markdown';
 import { NodeInspector } from './NodeInspector';
 import { ExportToolbar } from './ExportToolbar';
+import { isNodeTextEditing, setupEditClipboard } from './editClipboard';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -205,6 +206,9 @@ export class MindMapApp {
             toolBar: true,
             keypress: true,
             markdown: createMindElixirMarkdownParser() as Options['markdown'],
+            pasteHandler: (event) => {
+                void this.handleImagePaste(event);
+            },
         });
 
         this.imageModal = new ImageModal(this.lastSelectedNode, this.mind);
@@ -234,6 +238,7 @@ export class MindMapApp {
             onError: (message) => this.vscode.postMessage({ type: 'exportError', message }),
         });
 
+        setupEditClipboard(this.mind);
         this.initListeners();
         this.syncNodePanel();
     }
@@ -258,7 +263,6 @@ export class MindMapApp {
 
     initListeners() {
         window.addEventListener('message', event => this.handleVscodeMessage(event.data));
-        window.addEventListener('paste', e => this.handlePaste(e as ClipboardEvent));
 
         const mindmapEl = document.getElementById('mindmap');
         if (mindmapEl) {
@@ -337,7 +341,10 @@ export class MindMapApp {
         }
     }
 
-    async handlePaste(e: ClipboardEvent) {
+    async handleImagePaste(e: ClipboardEvent) {
+        if (isNodeTextEditing()) {
+            return;
+        }
         if (!this.mind.currentNode) return;
         const items = e.clipboardData?.items;
         if (!items) return;
