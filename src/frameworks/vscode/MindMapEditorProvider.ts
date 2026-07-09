@@ -142,7 +142,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                     return;
                 case 'exportFile': {
                     const format = e.format;
-                    if (format !== 'png' && format !== 'json' && format !== 'plaintext') {
+                    if (format !== 'png' && format !== 'json' && format !== 'markdown' && format !== 'plaintext') {
                         return;
                     }
                     const defaultName = typeof e.defaultName === 'string'

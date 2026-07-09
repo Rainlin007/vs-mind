@@ -16,6 +16,7 @@ A VS Code extension that provides a visual mind map editor. Edit `.mm` / `.mindm
 - **Layout & lines** — Left / right / bilateral layout; curve, polyline, underline, and right-angle underline styles
 - **Background patterns** — None, dots, grid, or cross-dot with adjustable color and opacity
 - **Node images** — Paste images from clipboard; click to preview full size
+- **Export options** — Export to PNG, JSON, plaintext, or Markdown
 - **Resizable panel** — Drag the left edge of the side panel to adjust width (180–520 px)
 - **Plain JSON storage** — Mind map data is saved as readable JSON; easy to version-control with Git
 
@@ -154,6 +155,7 @@ Mind maps are stored as UTF-8 JSON. Example fields:
 - **布局与线条** — 向左 / 向右 / 双侧布局；曲线、折线、下划线、直角下划线
 - **背景花纹** — 无 / 点阵 / 网格 / 十字点，可调颜色与透明度
 - **节点图片** — 从剪贴板粘贴图片，点击可全屏预览
+- **导出选项** — 支持导出 PNG、JSON、纯文本或 Markdown
 - **面板可调宽** — 拖动属性面板左边缘调整宽度（180–520 px）
 - **纯 JSON 存储** — 文件内容为可读 JSON，方便 Git 版本管理
 

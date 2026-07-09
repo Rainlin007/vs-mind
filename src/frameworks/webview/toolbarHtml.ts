@@ -14,6 +14,7 @@ export const MAP_TOOLBAR_HTML = `
 								<div id="export-menu" class="export-menu hidden" role="menu" aria-label="导出格式">
 									<button class="export-menu-item" type="button" data-export="png" role="menuitem">PNG</button>
 									<button class="export-menu-item" type="button" data-export="json" role="menuitem">JSON</button>
+									<button class="export-menu-item" type="button" data-export="markdown" role="menuitem">Markdown</button>
 									<button class="export-menu-item" type="button" data-export="plaintext" role="menuitem">Plaintext</button>
 								</div>
 							</div>

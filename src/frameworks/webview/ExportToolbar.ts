@@ -1,8 +1,9 @@
 import type { MindElixirData } from 'mind-elixir';
 import { toExportJson } from '../../adapters/exportMindMap';
+import { toExportMarkdown } from './markdownExport';
 import { toExportPlaintext } from './plaintextExport';
 
-export type ExportFormat = 'png' | 'json' | 'plaintext';
+export type ExportFormat = 'png' | 'json' | 'markdown' | 'plaintext';
 
 export interface ExportFileMessage {
     type: 'exportFile';
@@ -129,6 +130,16 @@ export class ExportToolbar {
                     format,
                     defaultName: `${baseName}.mm`,
                     text: toExportJson(data),
+                });
+                return;
+            }
+
+            if (format === 'markdown') {
+                this.deps.postMessage({
+                    type: 'exportFile',
+                    format,
+                    defaultName: `${baseName}.md`,
+                    text: toExportMarkdown(data),
                 });
                 return;
             }
