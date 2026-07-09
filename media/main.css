@@ -18,11 +18,133 @@ body {
     position: relative;
 }
 
+.workspace-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+}
+
+.map-toolbar {
+    display: flex;
+    align-items: center;
+    height: 35px;
+    padding: 0 8px;
+    gap: 2px;
+    background: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-editor-background));
+    border-bottom: 1px solid var(--vscode-editorGroupHeader-tabsBorder, var(--vscode-sideBar-border));
+    flex-shrink: 0;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 8px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--vscode-foreground);
+    font-family: var(--vscode-font-family);
+    font-size: 11px;
+    cursor: pointer;
+    line-height: 22px;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+    background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+}
+
+.toolbar-btn:active:not(:disabled) {
+    background: var(--vscode-toolbar-activeBackground, rgba(99, 102, 103, 0.31));
+}
+
+.toolbar-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.toolbar-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.toolbar-icon svg {
+    display: block;
+}
+
+.toolbar-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 12px;
+    margin-left: -2px;
+    opacity: 0.8;
+}
+
+.export-dropdown {
+    position: relative;
+}
+
+.export-trigger {
+    padding-right: 4px;
+}
+
+.export-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 100;
+    min-width: 140px;
+    padding: 4px 0;
+    background: var(--vscode-menu-background, var(--vscode-dropdown-background));
+    border: 1px solid var(--vscode-menu-border, var(--vscode-dropdown-border));
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+.export-menu.hidden {
+    display: none;
+}
+
+.export-menu-item {
+    display: block;
+    width: 100%;
+    padding: 4px 20px;
+    border: none;
+    background: transparent;
+    color: var(--vscode-menu-foreground, var(--vscode-foreground));
+    font-family: var(--vscode-font-family);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    line-height: 22px;
+    white-space: nowrap;
+}
+
+.export-menu-item:hover {
+    background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
+    color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
+}
+
 .map-area {
     position: relative;
     flex: 1;
     min-width: 0;
-    height: 100%;
+    min-height: 0;
     overflow: hidden;
 }
 

@@ -7,6 +7,7 @@ import type { ThemeDocumentSettings } from './ThemePanel';
 import { DEFAULT_SIDE_PANEL_WIDTH, SidePanel } from './SidePanel';
 import { createMindElixirMarkdownParser } from './markdown';
 import { NodeInspector } from './NodeInspector';
+import { ExportToolbar } from './ExportToolbar';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -39,6 +40,7 @@ interface MindElixirInstance {
     selectNode(node: HTMLElement | NodeObj): void;
     reshapeNode(node: MindElixirInstance['currentNode'], patch: Partial<NodeObj>): void;
     findEle(id: string): MindElixirInstance['currentNode'];
+    exportPng: (noForeignObject?: boolean, injectCss?: string) => Promise<Blob | null>;
 }
 
 interface MindElixirCtor {
@@ -186,6 +188,8 @@ export class MindMapApp {
     private inspector: NodeInspector;
     private themePanel: ThemePanel;
     private sidePanel: SidePanel;
+    private exportToolbar: ExportToolbar;
+    private documentBaseName = 'mindmap';
 
     constructor(
         private readonly vscode: VSCodeApi,
@@ -209,8 +213,11 @@ export class MindMapApp {
         const sidePanelWidth = typeof this.state.sidePanelWidth === 'number'
             ? this.state.sidePanelWidth
             : DEFAULT_SIDE_PANEL_WIDTH;
-        this.sidePanel = new SidePanel(sidePanelWidth);
+        const sidePanelVisible = this.state.sidePanelVisible === true;
+        this.sidePanel = new SidePanel(sidePanelWidth, sidePanelVisible);
         this.sidePanel.onVisibilityChange = (visible) => {
+            this.state.sidePanelVisible = visible;
+            this.vscode.setState(this.state);
             this.vscode.postMessage({ type: 'sidePanelState', visible });
         };
         this.sidePanel.onWidthChange = (width) => {
@@ -219,8 +226,25 @@ export class MindMapApp {
         };
         this.vscode.postMessage({ type: 'sidePanelState', visible: this.sidePanel.isVisible() });
 
+        this.exportToolbar = new ExportToolbar({
+            getDocumentBaseName: () => this.documentBaseName,
+            getExportData: () => this.buildExportPayload(),
+            exportPng: () => this.mind.exportPng.call(this.mind),
+            postMessage: (message) => this.vscode.postMessage(message),
+            onError: (message) => this.vscode.postMessage({ type: 'exportError', message }),
+        });
+
         this.initListeners();
         this.syncNodePanel();
+    }
+
+    private buildExportPayload() {
+        const data = this.mind.getData();
+        const themeSettings = this.themePanel.getSettings();
+        return {
+            ...data,
+            ...themeSettings,
+        };
     }
 
     private syncNodePanel() {
@@ -260,6 +284,9 @@ export class MindMapApp {
                 break;
             case 'update': {
                 const text = message.text;
+                if (typeof message.documentBaseName === 'string' && message.documentBaseName) {
+                    this.documentBaseName = message.documentBaseName;
+                }
                 if (message.images) {
                     this.originalImageCache = message.images;
                 }
@@ -402,12 +429,7 @@ export class MindMapApp {
     }
 
     saveChanges() {
-        const data = this.mind.getData();
-        const themeSettings = this.themePanel.getSettings();
-        const payload = {
-            ...data,
-            ...themeSettings,
-        };
+        const payload = this.buildExportPayload();
         const text = JSON.stringify(payload, null, 2);
         this.lastContent = text;
         this.vscode.postMessage({

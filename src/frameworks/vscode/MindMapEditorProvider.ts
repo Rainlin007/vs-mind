@@ -1,7 +1,10 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { MindMapService } from '../../usecases/MindMapService';
 import { VSCodeImageRepository } from './VSCodeImageRepository';
+import { ExportService } from './ExportService';
 import { NODE_PANEL_SECTIONS_HTML } from '../webview/nodePanelHtml';
+import { MAP_TOOLBAR_HTML } from '../webview/toolbarHtml';
 
 export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 
@@ -12,14 +15,15 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
         const imageRepository = new VSCodeImageRepository();
         const service = new MindMapService(imageRepository);
-        const provider = new MindMapEditorProvider(context, service);
+        const exportService = new ExportService();
+        const provider = new MindMapEditorProvider(context, service, exportService);
         const providerRegistration = vscode.window.registerCustomEditorProvider(MindMapEditorProvider.viewType, provider, {
             webviewOptions: { retainContextWhenHidden: true },
         });
         const toggleSidePanel = vscode.commands.registerCommand('vscode-mm.toggleSidePanel', () => {
             MindMapEditorProvider.toggleActiveSidePanel();
         });
-        void vscode.commands.executeCommand('setContext', 'vscode-mm.sidePanelHidden', false);
+        void vscode.commands.executeCommand('setContext', 'vscode-mm.sidePanelHidden', true);
         return vscode.Disposable.from(providerRegistration, toggleSidePanel);
     }
 
@@ -34,7 +38,8 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 
     constructor(
         private readonly context: vscode.ExtensionContext,
-        private readonly service: MindMapService
+        private readonly service: MindMapService,
+        private readonly exportService: ExportService,
     ) { }
 
     /**
@@ -76,7 +81,8 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
             webviewPanel.webview.postMessage({
                 type: 'update',
                 text: document.getText().trim().length === 0 ? result.text : document.getText(),
-                images: result.images
+                images: result.images,
+                documentBaseName: path.basename(document.uri.fsPath, path.extname(document.uri.fsPath)),
             });
         }
 
@@ -134,6 +140,43 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                         await vscode.env.openExternal(vscode.Uri.parse(e.url));
                     }
                     return;
+                case 'exportFile': {
+                    const format = e.format;
+                    if (format !== 'png' && format !== 'json' && format !== 'plaintext') {
+                        return;
+                    }
+                    const defaultName = typeof e.defaultName === 'string'
+                        ? path.basename(e.defaultName, path.extname(e.defaultName))
+                        : path.basename(document.uri.fsPath, path.extname(document.uri.fsPath));
+                    try {
+                        if (format === 'png') {
+                            if (typeof e.dataBase64 !== 'string' || !e.dataBase64) {
+                                void vscode.window.showErrorMessage('PNG 导出数据无效。');
+                                return;
+                            }
+                            await this.exportService.saveExport(
+                                defaultName,
+                                format,
+                                Buffer.from(e.dataBase64, 'base64'),
+                            );
+                            return;
+                        }
+                        if (typeof e.text !== 'string') {
+                            void vscode.window.showErrorMessage('导出内容无效。');
+                            return;
+                        }
+                        await this.exportService.saveExport(defaultName, format, e.text);
+                    } catch (error) {
+                        console.error('Export failed:', error);
+                        void vscode.window.showErrorMessage('导出失败，请重试。');
+                    }
+                    return;
+                }
+                case 'exportError':
+                    if (typeof e.message === 'string' && e.message) {
+                        void vscode.window.showErrorMessage(e.message);
+                    }
+                    return;
             }
         });
 
@@ -185,11 +228,14 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 			</head>
 			<body>
 				<div class="main-content">
-					<div class="map-area">
-						<div id="bgPatternOverlay" class="bg-pattern-overlay"></div>
-						<div id="mindmap"></div>
+					<div class="workspace-column">
+						${MAP_TOOLBAR_HTML}
+						<div class="map-area">
+							<div id="bgPatternOverlay" class="bg-pattern-overlay"></div>
+							<div id="mindmap"></div>
+						</div>
 					</div>
-					<aside id="side-panel" class="side-panel">
+					<aside id="side-panel" class="side-panel hidden">
 						<div id="side-panel-resizer" class="side-panel-resizer" title="拖动调整宽度"></div>
 						<div class="side-panel-header">
 							<div class="side-panel-tabs">
