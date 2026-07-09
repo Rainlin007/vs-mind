@@ -168,6 +168,32 @@ function blockMindElixirClipboard(event: Event): void {
     event.preventDefault();
 }
 
+function attachEditUndoRedo(inputBox: HTMLDivElement): void {
+    if (inputBox.dataset.undoBound === 'true') {
+        return;
+    }
+    inputBox.dataset.undoBound = 'true';
+
+    inputBox.addEventListener('keydown', (event) => {
+        if (!(event.ctrlKey || event.metaKey) || event.altKey) {
+            return;
+        }
+
+        const key = event.key.toLowerCase();
+        const isRedo = (key === 'z' && event.shiftKey) || (key === 'y' && event.shiftKey);
+        const isUndo = key === 'z' && !event.shiftKey;
+        if (!isUndo && !isRedo) {
+            return;
+        }
+
+        const command = isRedo ? 'redo' : 'undo';
+        if (document.execCommand(command)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, true);
+}
+
 function onKeydown(event: KeyboardEvent): void {
     if (!isEditingActive() || !isMetaShortcut(event)) {
         return;
@@ -237,8 +263,10 @@ function onPaste(event: ClipboardEvent): void {
 
 function watchInputBoxMount(container: HTMLElement): void {
     const observer = new MutationObserver(() => {
-        if (getInputBox()) {
+        const inputBox = getInputBox();
+        if (inputBox) {
             requestAnimationFrame(focusInputBox);
+            attachEditUndoRedo(inputBox);
         }
     });
     observer.observe(container, { childList: true, subtree: true });

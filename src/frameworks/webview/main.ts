@@ -9,6 +9,7 @@ import { createMindElixirMarkdownParser } from './markdown';
 import { NodeInspector } from './NodeInspector';
 import { ExportToolbar } from './ExportToolbar';
 import { isNodeTextEditing, setupEditClipboard } from './editClipboard';
+import { setupUndoRedoViewportPreservation } from './preserveViewport';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -38,6 +39,11 @@ interface MindElixirInstance {
         style?: NodeObj['style'];
     } | null;
     container: HTMLElement;
+    map: HTMLElement;
+    scaleVal: number;
+    currentNodes?: HTMLElement[];
+    undo?: () => void;
+    redo?: () => void;
     selectNode(node: HTMLElement | NodeObj): void;
     reshapeNode(node: MindElixirInstance['currentNode'], patch: Partial<NodeObj>): void;
     findEle(id: string): MindElixirInstance['currentNode'];
@@ -243,6 +249,11 @@ export class MindMapApp {
         this.syncNodePanel();
     }
 
+    private onMindInitialized() {
+        setupUndoRedoViewportPreservation(this.mind, () => this.saveChanges());
+        this.themePanel.markMindReady();
+    }
+
     private buildExportPayload() {
         const data = this.mind.getData();
         const themeSettings = this.themePanel.getSettings();
@@ -311,7 +322,7 @@ export class MindMapApp {
                     const doc = prepareMindData(json as MindElixirData & Partial<ThemeDocumentSettings>);
                     this.mind.init(doc);
                     this.mind.refresh();
-                    this.themePanel.markMindReady();
+                    this.onMindInitialized();
                     this.themePanel.loadFromDocument(doc);
 
                     if (selectedNodeId) {
