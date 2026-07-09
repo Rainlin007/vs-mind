@@ -168,6 +168,9 @@ export class ThemePanel {
         this.bgPatternColor?.addEventListener('input', () => {
             this.settings.bgPatternColor = this.bgPatternColor.value;
             this.applyBgPattern();
+        });
+
+        this.bgPatternColor?.addEventListener('change', () => {
             this.onChange();
         });
 

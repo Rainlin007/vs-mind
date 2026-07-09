@@ -36,7 +36,6 @@ export class NodeInspector {
     private colorInput: HTMLInputElement;
     private hyperlinkInput: HTMLInputElement | null;
     private noteInput: HTMLTextAreaElement | null;
-    private noteSaveTimer: ReturnType<typeof setTimeout> | null = null;
     private editingNodeId: string | null = null;
 
     constructor(
@@ -57,7 +56,7 @@ export class NodeInspector {
         if (!this.content) return;
 
         this.sizeInput.addEventListener('change', () => this.updateStyle('fontSize', this.sizeInput.value));
-        this.colorInput.addEventListener('input', () => this.updateStyle('color', this.colorInput.value));
+        this.colorInput.addEventListener('change', () => this.updateStyle('color', this.colorInput.value));
 
         const swatches = this.content.querySelectorAll('.color-swatch');
         swatches.forEach(swatch => {
@@ -82,8 +81,11 @@ export class NodeInspector {
                 this.hyperlinkInput?.blur();
             }
         });
-        this.noteInput?.addEventListener('input', () => this.updateNote(this.noteInput!.value));
-        this.noteInput?.addEventListener('blur', () => this.flushNoteSave());
+        this.noteInput?.addEventListener('focus', () => this.captureEditingNodeId());
+        this.noteInput?.addEventListener('blur', () => {
+            const nodeId = this.editingNodeId ?? this.mind.currentNode?.nodeObj?.id ?? null;
+            this.commitNote(this.noteInput?.value ?? '', nodeId);
+        });
     }
 
     updateStyle(prop: string, value: string) {
@@ -118,14 +120,16 @@ export class NodeInspector {
     }
 
     private resolveTargetNode(nodeId?: string | null): NodeInspectorMind['currentNode'] {
-        const current = this.mind.currentNode;
-        if (current?.nodeObj) {
-            return current;
-        }
-        const id = nodeId ?? this.editingNodeId;
+        const id = nodeId ?? this.editingNodeId ?? this.mind.currentNode?.nodeObj?.id;
         if (!id) {
             return null;
         }
+
+        const current = this.mind.currentNode;
+        if (current?.nodeObj?.id === id) {
+            return current;
+        }
+
         try {
             return this.mind.findEle(id) ?? null;
         } catch {
@@ -167,9 +171,17 @@ export class NodeInspector {
         this.onChange();
     }
 
-    private updateNote(value: string) {
-        const node = this.mind.currentNode;
-        if (!node?.nodeObj) return;
+    private commitNote(rawValue: string, nodeId?: string | null) {
+        const node = this.resolveTargetNode(nodeId);
+        if (!node?.nodeObj) {
+            return;
+        }
+
+        const value = rawValue;
+        const current = node.nodeObj.note || '';
+        if (value === current) {
+            return;
+        }
 
         if (value) {
             node.nodeObj.note = value;
@@ -177,23 +189,6 @@ export class NodeInspector {
             delete node.nodeObj.note;
         }
 
-        this.scheduleNoteSave();
-    }
-
-    private scheduleNoteSave() {
-        if (this.noteSaveTimer) {
-            clearTimeout(this.noteSaveTimer);
-        }
-        this.noteSaveTimer = setTimeout(() => {
-            this.noteSaveTimer = null;
-            this.onChange();
-        }, 400);
-    }
-
-    private flushNoteSave() {
-        if (!this.noteSaveTimer) return;
-        clearTimeout(this.noteSaveTimer);
-        this.noteSaveTimer = null;
         this.onChange();
     }
 
@@ -203,6 +198,8 @@ export class NodeInspector {
 
     show(node: InspectorNode) {
         if (!this.content || !this.emptyHint) return;
+
+        this.commitPendingEdits();
 
         const resolved = resolveInspectorNode(node);
         if (!resolved) return;
@@ -222,9 +219,25 @@ export class NodeInspector {
 
     hide() {
         if (!this.content || !this.emptyHint) return;
+
+        this.commitPendingEdits();
+
         this.emptyHint.classList.remove('hidden');
         this.content.classList.add('hidden');
         this.setPanelEnabled(false);
+    }
+
+    /** Flush sidebar text fields before switching or closing the panel. */
+    private commitPendingEdits() {
+        if (!this.editingNodeId) {
+            return;
+        }
+        if (this.noteInput) {
+            this.commitNote(this.noteInput.value, this.editingNodeId);
+        }
+        if (this.hyperlinkInput) {
+            this.commitHyperlink(this.hyperlinkInput.value, this.editingNodeId);
+        }
     }
 
     private setPanelEnabled(enabled: boolean) {

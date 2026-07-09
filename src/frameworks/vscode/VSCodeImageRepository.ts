@@ -29,6 +29,18 @@ export class VSCodeImageRepository implements IImageRepository {
         const imagesPath = this.getImagesPath(mindMapFsPath);
         const imagesUri = vscode.Uri.file(imagesPath);
 
+        if (Object.keys(images).length === 0) {
+            try {
+                await vscode.workspace.fs.delete(imagesUri);
+            } catch (error) {
+                if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+                    return;
+                }
+                throw error;
+            }
+            return;
+        }
+
         const json = transformToJsonImages(images);
         const content = Buffer.from(JSON.stringify(json, null, 2), 'utf8');
         await vscode.workspace.fs.writeFile(imagesUri, content);

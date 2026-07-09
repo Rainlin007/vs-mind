@@ -10,6 +10,7 @@ import { NodeInspector } from './NodeInspector';
 import { ExportToolbar } from './ExportToolbar';
 import { isNodeTextEditing, setupEditClipboard } from './editClipboard';
 import { setupUndoRedoViewportPreservation } from './preserveViewport';
+import { NodeNoteTooltip } from './NodeNoteTooltip';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -196,6 +197,7 @@ export class MindMapApp {
     private themePanel: ThemePanel;
     private sidePanel: SidePanel;
     private exportToolbar: ExportToolbar;
+    private noteTooltip: NodeNoteTooltip;
     private documentBaseName = 'mindmap';
 
     constructor(
@@ -244,6 +246,8 @@ export class MindMapApp {
             onError: (message) => this.vscode.postMessage({ type: 'exportError', message }),
         });
 
+        this.noteTooltip = new NodeNoteTooltip(this.mind.container);
+
         setupEditClipboard(this.mind);
         this.initListeners();
         this.syncNodePanel();
@@ -252,6 +256,7 @@ export class MindMapApp {
     private onMindInitialized() {
         setupUndoRedoViewportPreservation(this.mind, () => this.saveChanges());
         this.themePanel.markMindReady();
+        this.noteTooltip.syncNoteMarkers();
     }
 
     private buildExportPayload() {
@@ -455,6 +460,7 @@ export class MindMapApp {
             text: text,
             images: this.originalImageCache
         });
+        this.noteTooltip.syncNoteMarkers();
     }
 }
 

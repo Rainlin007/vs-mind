@@ -405,3 +405,42 @@ body {
     user-select: text !important;
     -webkit-user-select: text !important;
 }
+
+/* Node notes: marker on map + hover tooltip */
+me-tpc.has-note {
+    position: relative;
+}
+
+me-tpc.has-note::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--vscode-editorWarning-foreground, #cca700);
+    box-shadow: 0 0 0 1px var(--vscode-editor-background, #1e1e1e);
+    pointer-events: none;
+}
+
+.node-note-tooltip {
+    position: fixed;
+    z-index: 100000;
+    max-width: 280px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+    pointer-events: none;
+    background: var(--vscode-editorHoverWidget-background, #252526);
+    color: var(--vscode-editorHoverWidget-foreground, #cccccc);
+    border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.node-note-tooltip[hidden] {
+    display: none !important;
+}
