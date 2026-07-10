@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-export type ExportFormat = 'png' | 'json' | 'markdown' | 'plaintext';
+export type ExportFormat = 'png' | 'json' | 'markdown' | 'mdmm' | 'plaintext';
 
 interface ExportFormatConfig {
     extension: string;
@@ -23,6 +23,11 @@ const FORMAT_CONFIG: Record<ExportFormat, ExportFormatConfig> = {
     markdown: {
         extension: 'md',
         filters: { 'Markdown': ['md', 'markdown'] },
+        binary: false,
+    },
+    mdmm: {
+        extension: 'mdmm',
+        filters: { 'Markdown Mind Map': ['mdmm'] },
         binary: false,
     },
     plaintext: {

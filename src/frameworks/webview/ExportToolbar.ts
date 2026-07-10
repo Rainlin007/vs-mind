@@ -3,7 +3,7 @@ import { toExportJson } from '../../adapters/exportMindMap';
 import { toExportMarkdown } from './markdownExport';
 import { toExportPlaintext } from './plaintextExport';
 
-export type ExportFormat = 'png' | 'json' | 'markdown' | 'plaintext';
+export type ExportFormat = 'png' | 'json' | 'markdown' | 'mdmm' | 'plaintext';
 
 export interface ExportFileMessage {
     type: 'exportFile';
@@ -134,11 +134,11 @@ export class ExportToolbar {
                 return;
             }
 
-            if (format === 'markdown') {
+            if (format === 'markdown' || format === 'mdmm') {
                 this.deps.postMessage({
                     type: 'exportFile',
                     format,
-                    defaultName: `${baseName}.md`,
+                    defaultName: `${baseName}.${format === 'mdmm' ? 'mdmm' : 'md'}`,
                     text: toExportMarkdown(data),
                 });
                 return;

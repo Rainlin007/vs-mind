@@ -67,6 +67,9 @@
           },
           {
             "filenamePattern": "*.mindmap"
+          },
+          {
+            "filenamePattern": "*.mdmm"
           }
         ],
         "priority": "default"

@@ -1,40 +1,42 @@
 import { IImageRepository } from '../domain/IImageRepository';
 import { ImageMap } from '../domain/MindMap';
-// Imports removed as they were unused
+import { createDefaultMindMapData, fromMdmm, toMdmm } from '../adapters/mdmm';
+
+export type MindMapDocumentFormat = 'json' | 'mdmm';
+
+export interface WebviewContent {
+    text: string;
+    documentText: string;
+    images: ImageMap;
+    format: MindMapDocumentFormat;
+}
 
 
 export class MindMapService {
     constructor(private readonly imageRepository: IImageRepository) { }
 
+    public getDocumentFormat(fsPath: string): MindMapDocumentFormat {
+        return fsPath.toLowerCase().endsWith('.mdmm') ? 'mdmm' : 'json';
+    }
+
     /**
      * Generates default mind map content for new files.
      */
-    public getDefaultContent(): string {
-        const defaultContent = {
-            nodeData: {
-                id: 'root',
-                topic: 'Central Topic',
-                root: true,
-                children: [],
-            },
-            arrows: [],
-            themeTemplate: 'clayLight',
-            backgroundPattern: 'grid',
-            bgPatternColor: '#808080',
-            bgPatternOpacity: 5,
-            direction: 1,
-            lineStyle: 'curve',
-        };
-        return JSON.stringify(defaultContent, null, 2);
+    public getDefaultContent(format: MindMapDocumentFormat = 'json'): string {
+        const defaultContent = createDefaultMindMapData();
+        return format === 'mdmm'
+            ? toMdmm(defaultContent)
+            : JSON.stringify(defaultContent, null, 2);
     }
 
     /**
      * Prepares content for the webview, including loading and transforming images.
      */
-    public async getWebviewContent(text: string, fsPath: string): Promise<{ text: string, images: ImageMap }> {
-        let contentText = text;
-        if (contentText.trim().length === 0) {
-            contentText = this.getDefaultContent();
+    public async getWebviewContent(text: string, fsPath: string): Promise<WebviewContent> {
+        const format = this.getDocumentFormat(fsPath);
+        let documentText = text;
+        if (documentText.trim().length === 0) {
+            documentText = this.getDefaultContent(format);
         }
 
         let images: ImageMap = {};
@@ -58,9 +60,19 @@ export class MindMapService {
         // So the implementing repository will use `transformToWebviewImages`.
 
         return {
-            text: contentText,
-            images: images
+            text: this.toWebviewText(documentText, format),
+            documentText,
+            images,
+            format,
         };
+    }
+
+    public serializeWebviewContent(text: string, fsPath: string): string {
+        const format = this.getDocumentFormat(fsPath);
+        if (format === 'mdmm') {
+            return toMdmm(JSON.parse(text));
+        }
+        return text;
     }
 
     /**
@@ -68,5 +80,12 @@ export class MindMapService {
      */
     public async saveImages(fsPath: string, images: ImageMap): Promise<void> {
         await this.imageRepository.writeImages(fsPath, images);
+    }
+
+    private toWebviewText(documentText: string, format: MindMapDocumentFormat): string {
+        if (format === 'mdmm') {
+            return JSON.stringify(fromMdmm(documentText), null, 2);
+        }
+        return documentText;
     }
 }

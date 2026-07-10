@@ -67,10 +67,11 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
             }
 
             const result = await this.service.getWebviewContent(document.getText(), document.uri.fsPath);
+            const isEmptyDocument = document.getText().trim().length === 0;
 
-            if (document.getText().trim().length === 0) {
+            if (isEmptyDocument) {
                 const edit = new vscode.WorkspaceEdit();
-                edit.insert(document.uri, new vscode.Position(0, 0), result.text);
+                edit.insert(document.uri, new vscode.Position(0, 0), result.documentText);
                 await vscode.workspace.applyEdit(edit);
             }
 
@@ -80,7 +81,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 
             webviewPanel.webview.postMessage({
                 type: 'update',
-                text: document.getText().trim().length === 0 ? result.text : document.getText(),
+                text: result.text,
                 images: result.images,
                 documentBaseName: path.basename(document.uri.fsPath, path.extname(document.uri.fsPath)),
             });
@@ -128,7 +129,10 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                     return;
                 case 'change':
                     isInternalUpdate = true;
-                    await this.updateTextDocument(document, e.text);
+                    await this.updateTextDocument(
+                        document,
+                        this.service.serializeWebviewContent(e.text, document.uri.fsPath),
+                    );
                     isInternalUpdate = false;
 
                     if (e.images) {
@@ -142,7 +146,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                     return;
                 case 'exportFile': {
                     const format = e.format;
-                    if (format !== 'png' && format !== 'json' && format !== 'markdown' && format !== 'plaintext') {
+                    if (format !== 'png' && format !== 'json' && format !== 'markdown' && format !== 'mdmm' && format !== 'plaintext') {
                         return;
                     }
                     const defaultName = typeof e.defaultName === 'string'
