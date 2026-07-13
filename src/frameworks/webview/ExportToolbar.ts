@@ -3,7 +3,7 @@ import { toExportJson } from '../../adapters/exportMindMap';
 import { toExportMarkdown } from './markdownExport';
 import { toExportPlaintext } from './plaintextExport';
 
-export type ExportFormat = 'png' | 'json' | 'markdown' | 'mdmm' | 'plaintext';
+export type ExportFormat = 'png' | 'mmf' | 'markdown' | 'plaintext';
 
 export interface ExportFileMessage {
     type: 'exportFile';
@@ -124,21 +124,21 @@ export class ExportToolbar {
 
             const data = this.deps.getExportData();
 
-            if (format === 'json') {
+            if (format === 'mmf') {
                 this.deps.postMessage({
                     type: 'exportFile',
                     format,
-                    defaultName: `${baseName}.mm`,
+                    defaultName: `${baseName}.mmf`,
                     text: toExportJson(data),
                 });
                 return;
             }
 
-            if (format === 'markdown' || format === 'mdmm') {
+            if (format === 'markdown') {
                 this.deps.postMessage({
                     type: 'exportFile',
                     format,
-                    defaultName: `${baseName}.${format === 'mdmm' ? 'mdmm' : 'md'}`,
+                    defaultName: `${baseName}.md`,
                     text: toExportMarkdown(data),
                 });
                 return;
@@ -148,7 +148,7 @@ export class ExportToolbar {
                 type: 'exportFile',
                 format,
                 defaultName: `${baseName}.txt`,
-                text: toExportPlaintext(data),
+                text: await toExportPlaintext(data),
             });
         } catch (error) {
             console.error('Export failed:', error);

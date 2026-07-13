@@ -2,7 +2,7 @@
 
 **English** | [中文](#中文)
 
-A VS Code extension that provides a visual mind map editor. Edit `.mm` / `.mindmap` files directly in the editor with drag-and-drop nodes, themes, and styling — powered by [MindElixir](https://github.com/ssshooter/mind-elixir-core).
+A VS Code extension that provides a visual mind map editor. Edit `.mmf` files directly in the editor with drag-and-drop nodes, themes, and styling — powered by [MindElixir](https://github.com/ssshooter/mind-elixir-core).
 
 ![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.74.0-blue)
 ![MindElixir](https://img.shields.io/badge/MindElixir-5.13.0-green)
@@ -13,21 +13,18 @@ A VS Code extension that provides a visual mind map editor. Edit `.mm` / `.mindm
 - **Visual editing** — Create, edit, and rearrange mind map nodes with drag-and-drop
 - **Right-side property panel** — Two tabs: **Node** (font, color, bold/italic) and **Theme** (colors, layout, line style, background pattern)
 - **8 preset themes** — 4 light + 4 dark color schemes
-- **Layout & lines** — Left / right / bilateral layout; curve, polyline, underline, and right-angle underline styles
+- **Layout & lines** — Left / right / bilateral layout; five curated styles: smooth curve, clean straight, rounded elbow, stepped polyline, and classic underline
 - **Background patterns** — None, dots, grid, or cross-dot with adjustable color and opacity
 - **Node images** — Paste images from clipboard; click to preview full size
-- **Export options** — Export to PNG, JSON, plaintext, Markdown, or MDMM
-- **MDMM exchange format** — Open and edit restricted Markdown mind maps for AI-friendly workflows
+- **Export options** — Export to MMF, PNG, plaintext, or Markdown
 - **Resizable panel** — Drag the left edge of the side panel to adjust width (180–520 px)
 - **Plain JSON storage** — Mind map data is saved as readable JSON; easy to version-control with Git
 
 ## Supported File Formats
 
-| Extension   | Description                            |
-| ----------- | -------------------------------------- |
-| `.mm`       | Primary mind map document format       |
-| `.mindmap`  | Mind map document format (alias)       |
-| `.mdmm`     | Restricted Markdown mind map exchange  |
+| Extension | Description |
+| --------- | ----------- |
+| `.mmf` | Mind Map Format document containing MindElixir JSON |
 
 ## Getting Started
 
@@ -44,11 +41,11 @@ npm install
 npm run compile
 ```
 
-Press **F5** in VS Code to launch the Extension Development Host, then open or create a `.mm` file.
+Press **F5** in VS Code to launch the Extension Development Host, then open or create a `.mmf` file.
 
 ## Usage
 
-1. Open a `.mm` or `.mindmap` file — VS Code opens it with the mind map editor automatically.
+1. Open a `.mmf` file — VS Code opens it with the mind map editor automatically.
 2. Use the **canvas toolbar** (right side of the map) for node operations: add child/sibling, delete, etc.
 3. Open the **property panel** via the sidebar icon in the editor title bar (top-right).
 4. In the **Node** tab, select a node to edit font size, color, bold, and italic.
@@ -89,7 +86,7 @@ Press **F5** in VS Code to launch the Extension Development Host, then open or c
 ### Debug
 
 1. Run the **Run Extension** launch configuration (F5).
-2. In the Extension Development Host, open a `.mm` file.
+2. In the Extension Development Host, open a `.mmf` file.
 3. For standalone webview debugging, open `debug/webview.html` in a browser or run `npm run test:browser`.
 
 ### Project Structure
@@ -107,9 +104,9 @@ media/                # Bundled CSS/JS (MindElixir + main)
 debug/                # Standalone webview test page
 ```
 
-## Document Format
+## MMF Document Format
 
-Mind maps are stored as UTF-8 JSON. Example fields:
+MMF documents store the raw MindElixir data structure as UTF-8 JSON. Example fields:
 
 ```json
 {
@@ -128,7 +125,7 @@ Mind maps are stored as UTF-8 JSON. Example fields:
 | ----- | ----------- |
 | `themeTemplate` | Preset theme ID (`auroraLight`, `mintLight`, `clayLight`, …) |
 | `direction` | Layout: `0` left, `1` right, `2` bilateral |
-| `lineStyle` | `curve` \| `straight` \| `markmap` \| `straightUnderline` |
+| `lineStyle` | `curve` \| `straight` \| `elbow` \| `step` \| `branch` |
 | `backgroundPattern` | `none` \| `dots` \| `grid` \| `crossDot` |
 
 ## License
@@ -145,7 +142,7 @@ Mind maps are stored as UTF-8 JSON. Example fields:
 
 # 中文
 
-一款在 VS Code 中直接编辑思维导图的扩展。支持 `.mm` / `.mindmap` 文件的可视化编辑、主题配色与节点样式，底层基于 [MindElixir](https://github.com/ssshooter/mind-elixir-core)。
+一款在 VS Code 中直接编辑思维导图的扩展。支持 `.mmf` 文件的可视化编辑、主题配色与节点样式，底层基于 [MindElixir](https://github.com/ssshooter/mind-elixir-core)。
 
 [English](#vs-mind) | **中文**
 
@@ -154,21 +151,18 @@ Mind maps are stored as UTF-8 JSON. Example fields:
 - **可视化编辑** — 拖拽节点，增删改思维导图结构
 - **右侧属性面板** — 分 **节点**（字号、颜色、粗体/斜体）和 **主题**（配色、布局、线条、背景花纹）两个 Tab
 - **8 套预设主题** — 4 款亮色 + 4 款暗色
-- **布局与线条** — 向左 / 向右 / 双侧布局；曲线、折线、下划线、直角下划线
+- **布局与线条** — 向左 / 向右 / 双侧布局；流畅曲线、简洁直线、圆角折线、阶梯折线、经典下划线
 - **背景花纹** — 无 / 点阵 / 网格 / 十字点，可调颜色与透明度
 - **节点图片** — 从剪贴板粘贴图片，点击可全屏预览
-- **导出选项** — 支持导出 PNG、JSON、纯文本、Markdown 或 MDMM
-- **MDMM 交换格式** — 可打开和编辑受限 Markdown 思维导图，便于与 AI 协作
+- **导出选项** — 支持导出 MMF、PNG、纯文本或 Markdown
 - **面板可调宽** — 拖动属性面板左边缘调整宽度（180–520 px）
 - **纯 JSON 存储** — 文件内容为可读 JSON，方便 Git 版本管理
 
 ## 支持的文件格式
 
-| 扩展名      | 说明                         |
-| ----------- | ---------------------------- |
-| `.mm`       | 主思维导图格式               |
-| `.mindmap`  | 思维导图格式（别名）         |
-| `.mdmm`     | 受限 Markdown 思维导图交换格式 |
+| 扩展名 | 说明 |
+| ------ | ---- |
+| `.mmf` | Mind Map Format 文档，内容为 MindElixir JSON |
 
 ## 快速开始
 
@@ -185,11 +179,11 @@ npm install
 npm run compile
 ```
 
-在 VS Code 中按 **F5** 启动扩展开发宿主，然后打开或新建 `.mm` 文件。
+在 VS Code 中按 **F5** 启动扩展开发宿主，然后打开或新建 `.mmf` 文件。
 
 ## 使用说明
 
-1. 打开 `.mm` 或 `.mindmap` 文件，VS Code 会自动用思维导图编辑器打开。
+1. 打开 `.mmf` 文件，VS Code 会自动用思维导图编辑器打开。
 2. 使用画布**右侧工具栏**进行节点操作：添加子节点/兄弟节点、删除等。
 3. 点击编辑器标题栏右上角的**侧栏图标**打开/关闭属性面板。
 4. 在 **节点** Tab 中选中节点，可调整字号、颜色、粗体、斜体。
@@ -230,7 +224,7 @@ npm run compile
 ### 调试
 
 1. 使用 **Run Extension** 启动配置（F5）。
-2. 在扩展开发宿主中打开 `.mm` 文件。
+2. 在扩展开发宿主中打开 `.mmf` 文件。
 3. 也可在浏览器中打开 `debug/webview.html`，或运行 `npm run test:browser` 进行独立 webview 测试。
 
 ### 项目结构
@@ -248,9 +242,9 @@ media/                # 打包后的 CSS/JS
 debug/                # 独立 webview 测试页
 ```
 
-## 文件格式
+## MMF 文件格式
 
-思维导图以 UTF-8 JSON 保存，示例：
+MMF 文档直接以 UTF-8 JSON 保存 MindElixir 数据结构，示例：
 
 ```json
 {
@@ -269,7 +263,7 @@ debug/                # 独立 webview 测试页
 | ---- | ---- |
 | `themeTemplate` | 预设主题 ID（如 `auroraLight`、`clayLight` 等） |
 | `direction` | 布局：`0` 向左，`1` 向右，`2` 双侧 |
-| `lineStyle` | `curve` 曲线 \| `straight` 折线 \| `markmap` 下划线 \| `straightUnderline` 直角下划线 |
+| `lineStyle` | `curve` 流畅曲线 \| `straight` 简洁直线 \| `elbow` 圆角折线 \| `step` 阶梯折线 \| `branch` 经典下划线 |
 | `backgroundPattern` | `none` 无 \| `dots` 点阵 \| `grid` 网格 \| `crossDot` 十字点 |
 
 ### 预设主题一览

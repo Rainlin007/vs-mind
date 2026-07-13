@@ -1,6 +1,6 @@
-import { mindElixirToPlaintext } from 'mind-elixir/plaintextConverter';
 import type { MindElixirData } from 'mind-elixir';
 
-export function toExportPlaintext(data: MindElixirData): string {
+export async function toExportPlaintext(data: MindElixirData): Promise<string> {
+    const { mindElixirToPlaintext } = await import('mind-elixir/plaintextConverter');
     return mindElixirToPlaintext(data);
 }

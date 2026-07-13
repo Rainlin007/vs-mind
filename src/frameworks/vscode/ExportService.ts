@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-export type ExportFormat = 'png' | 'json' | 'markdown' | 'mdmm' | 'plaintext';
+export type ExportFormat = 'png' | 'mmf' | 'markdown' | 'plaintext';
 
 interface ExportFormatConfig {
     extension: string;
@@ -15,19 +15,14 @@ const FORMAT_CONFIG: Record<ExportFormat, ExportFormatConfig> = {
         filters: { 'PNG 图片': ['png'] },
         binary: true,
     },
-    json: {
-        extension: 'mm',
-        filters: { '思维导图': ['mm', 'mindmap', 'json'] },
+    mmf: {
+        extension: 'mmf',
+        filters: { 'Mind Map Format': ['mmf'] },
         binary: false,
     },
     markdown: {
         extension: 'md',
         filters: { 'Markdown': ['md', 'markdown'] },
-        binary: false,
-    },
-    mdmm: {
-        extension: 'mdmm',
-        filters: { 'Markdown Mind Map': ['mdmm'] },
         binary: false,
     },
     plaintext: {

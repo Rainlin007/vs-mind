@@ -15,8 +15,8 @@ suite('MindMapEditor Test Suite', () => {
         fs.rmdirSync(tmpDir, { recursive: true });
     });
 
-    test('Should initialize empty .mindmap file with default content', async () => {
-        const uri = vscode.Uri.file(path.join(tmpDir, 'empty.mindmap'));
+    test('Should initialize empty .mmf file with default content', async () => {
+        const uri = vscode.Uri.file(path.join(tmpDir, 'empty.mmf'));
         await vscode.workspace.fs.writeFile(uri, new Uint8Array(0));
 
         // Open the document using the custom editor

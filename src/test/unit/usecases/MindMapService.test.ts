@@ -20,49 +20,21 @@ class MemoryImageRepository implements IImageRepository {
 describe('MindMapService Unit Test Suite', () => {
     const service = new MindMapService(new MemoryImageRepository());
 
-    it('should convert mdmm document text to webview json', async () => {
-        const result = await service.getWebviewContent([
-            '# Root',
-            '',
-            '## Branch',
-            '',
-            '- Leaf',
-            '',
-        ].join('\n'), '/tmp/example.mdmm');
-
+    it('should initialize an empty mmf document with MindElixir JSON', async () => {
+        const result = await service.getWebviewContent('', '/tmp/example.mmf');
         const parsed = JSON.parse(result.text);
-        assert.strictEqual(result.format, 'mdmm');
-        assert.strictEqual(result.documentText.includes('# Root'), true);
-        assert.strictEqual(parsed.nodeData.topic, 'Root');
-        assert.strictEqual(parsed.nodeData.children[0].topic, 'Branch');
-        assert.strictEqual(parsed.nodeData.children[0].children[0].topic, 'Leaf');
+        assert.strictEqual(parsed.nodeData.topic, 'Central Topic');
+        assert.strictEqual(result.documentText, result.text);
     });
 
-    it('should serialize webview json back to mdmm for mdmm documents', () => {
-        const documentText = service.serializeWebviewContent(JSON.stringify({
-            nodeData: {
-                id: 'root',
-                topic: 'Root',
-                root: true,
-                children: [
-                    { id: 'leaf', topic: 'Leaf' },
-                ],
-            },
-            arrows: [],
-        }), '/tmp/example.mdmm');
-
-        assert.strictEqual(documentText, '# Root\n\n- Leaf\n');
-    });
-
-    it('should leave json documents as json', async () => {
+    it('should preserve mmf JSON when loading and saving', async () => {
         const json = JSON.stringify({
             nodeData: { id: 'root', topic: 'Root', root: true, children: [] },
             arrows: [],
         });
 
-        const result = await service.getWebviewContent(json, '/tmp/example.mm');
-        assert.strictEqual(result.format, 'json');
+        const result = await service.getWebviewContent(json, '/tmp/example.mmf');
         assert.strictEqual(result.text, json);
-        assert.strictEqual(service.serializeWebviewContent(json, '/tmp/example.mm'), json);
+        assert.strictEqual(service.serializeWebviewContent(json), json);
     });
 });

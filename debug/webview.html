@@ -29,11 +29,33 @@
 </head>
 <body>
   <div class="main-content">
-    <div class="map-area">
-      <div id="bgPatternOverlay" class="bg-pattern-overlay"></div>
-      <div id="mindmap"></div>
+    <div class="workspace-column">
+      <header class="map-toolbar" role="toolbar" aria-label="导出">
+        <div class="toolbar-group">
+          <div class="export-dropdown">
+            <button id="export-trigger" class="toolbar-btn export-trigger" type="button" title="导出" aria-haspopup="menu" aria-expanded="false" aria-label="导出">
+              <span class="toolbar-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8.5 1.5a.5.5 0 0 0-1 0v7.793L5.354 7.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 9.293V1.5zM2 12.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>
+              </span>
+              <span class="toolbar-chevron" aria-hidden="true">
+                <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M4.5 6.5 8 10l3.5-3.5L12 7.5 8 11.5 4 7.5l.5-1z"/></svg>
+              </span>
+            </button>
+            <div id="export-menu" class="export-menu hidden" role="menu" aria-label="导出格式">
+              <button class="export-menu-item" type="button" data-export="png" role="menuitem">PNG</button>
+              <button class="export-menu-item" type="button" data-export="mmf" role="menuitem">MMF</button>
+              <button class="export-menu-item" type="button" data-export="markdown" role="menuitem">Markdown</button>
+              <button class="export-menu-item" type="button" data-export="plaintext" role="menuitem">Plaintext</button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="map-area">
+        <div id="bgPatternOverlay" class="bg-pattern-overlay"></div>
+        <div id="mindmap"></div>
+      </div>
     </div>
-    <aside id="side-panel" class="side-panel">
+    <aside id="side-panel" class="side-panel hidden">
       <div id="side-panel-resizer" class="side-panel-resizer" title="拖动调整宽度"></div>
       <div class="side-panel-header">
         <div class="side-panel-tabs">
@@ -107,7 +129,20 @@
     });
 
     const defaultDoc = {
-      nodeData: { id: 'root', topic: 'Central Topic', root: true, children: [] },
+      nodeData: {
+        id: 'root',
+        topic: 'Central Topic',
+        root: true,
+        children: [{
+          id: 'child',
+          topic: 'Child Topic',
+          children: [{
+            id: 'grandchild',
+            topic: 'Grandchild Topic',
+            children: [{ id: 'great-grandchild', topic: 'Great-grandchild Topic', children: [] }],
+          }],
+        }],
+      },
       arrows: [],
       themeTemplate: 'clayLight',
       backgroundPattern: 'grid',
@@ -134,7 +169,31 @@
       await new Promise((r) => setTimeout(r, 300));
 
       log('mind map rendered', !!document.querySelector('me-tpc'));
-      log('side panel visible', !document.getElementById('side-panel').classList.contains('hidden'));
+      const collapseControls = Array.from(document.querySelectorAll('me-epd.minus'));
+      log('collapse controls vertically centered', collapseControls.length >= 2 && collapseControls.every((control) => {
+        const controlRect = control.getBoundingClientRect();
+        const parentRect = control.parentElement.getBoundingClientRect();
+        const controlCenter = controlRect.top + controlRect.height / 2;
+        const parentCenter = parentRect.top + parentRect.height / 2;
+        return Math.abs(controlCenter - parentCenter) < 1;
+      }));
+      log('side panel starts collapsed', document.getElementById('side-panel').classList.contains('hidden'));
+
+      const exportTrigger = document.getElementById('export-trigger');
+      const mmfExport = document.querySelector('[data-export="mmf"]');
+      log('MMF export control present', !!exportTrigger && !!mmfExport);
+      log('legacy export controls absent', !document.querySelector('[data-export="json"], [data-export="mdmm"]'));
+      if (exportTrigger && mmfExport) {
+        exportTrigger.click();
+        mmfExport.click();
+        await new Promise((r) => setTimeout(r, 50));
+        const message = window.__TEST__.lastMessage;
+        log('MMF export emits .mmf MindElixir JSON',
+          message?.type === 'exportFile'
+          && message?.format === 'mmf'
+          && message?.defaultName === 'mindmap.mmf'
+          && JSON.parse(message.text).nodeData.topic === 'Central Topic');
+      }
 
       document.getElementById('btn-close-panel').click();
       await new Promise((r) => setTimeout(r, 50));
@@ -171,11 +230,35 @@
       log('layout switch', !window.__TEST__.errors.length);
 
       const lineStyleSelect = document.getElementById('line-style-select');
-      log('line style options populated', lineStyleSelect.options.length >= 4);
-      lineStyleSelect.value = 'straight';
+      const lineOptions = Array.from(lineStyleSelect.options)
+        .map((option) => [option.value, option.textContent]);
+      log('line style options are focused', JSON.stringify(lineOptions) === JSON.stringify([
+        ['curve', '流畅曲线'],
+        ['straight', '简洁直线'],
+        ['elbow', '圆角折线'],
+        ['step', '阶梯折线'],
+        ['branch', '经典下划线'],
+      ]));
+      lineStyleSelect.value = 'curve';
       lineStyleSelect.dispatchEvent(new Event('change'));
       await new Promise((r) => setTimeout(r, 100));
-      log('line style switch', !window.__TEST__.errors.length);
+      const curvePaths = Array.from(document.querySelectorAll('.lines path, .subLines path'));
+      const curvePathData = curvePaths.map((path) => path.getAttribute('d') || '');
+      log('smooth curve has no underline segments',
+        curvePathData.length > 0 && curvePathData.every((pathData) => !/(^|\s)H(\s|$)/.test(pathData)));
+      lineStyleSelect.value = 'branch';
+      lineStyleSelect.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 100));
+      const branchPathData = Array.from(document.querySelectorAll('.lines path, .subLines path'))
+        .map((path) => path.getAttribute('d') || '');
+      log('classic underline has underline segments',
+        branchPathData.length > 0 && branchPathData.every((pathData) => /(^|\s)H(\s|$)/.test(pathData)));
+      for (const value of ['curve', 'straight', 'elbow', 'step', 'branch']) {
+        lineStyleSelect.value = value;
+        lineStyleSelect.dispatchEvent(new Event('change'));
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      log('line style switching', !window.__TEST__.errors.length);
 
       const ltToolbar = document.querySelector('.mind-elixir-toolbar.lt');
       log('left toolbar hidden', !ltToolbar || getComputedStyle(ltToolbar).display === 'none');
@@ -187,9 +270,10 @@
       log('bg pattern dots', overlay.style.backgroundImage.includes('radial-gradient'));
 
       const noErrors = window.__TEST__.errors.length === 0;
+      const allChecksPassed = window.__TEST__.logs.every((entry) => entry.ok);
       window.__TEST__.done = true;
-      window.__TEST__.passed = noErrors;
-      log(noErrors ? 'ALL TESTS PASSED' : 'TESTS FAILED', noErrors);
+      window.__TEST__.passed = noErrors && allChecksPassed;
+      log(window.__TEST__.passed ? 'ALL TESTS PASSED' : 'TESTS FAILED', window.__TEST__.passed);
     }
   </script>
   <script src="../media/MindElixir.js"></script>

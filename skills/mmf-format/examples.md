@@ -1,4 +1,4 @@
-# `.mm` 格式示例
+# `.mmf` 格式示例
 
 ## 1. 默认空文件（扩展自动初始化）
 
@@ -20,7 +20,7 @@
 }
 ```
 
-## 2. 基础树形结构（仓库 `example.mindmap`）
+## 2. 基础树形结构
 
 ```json
 {
@@ -47,11 +47,9 @@
       { "topic": "Idea 3", "id": "idea3" }
     ]
   },
-  "linkData": {}
+  "arrows": []
 }
 ```
-
-> 注：`linkData` 为旧格式字段，可兼容；新文件推荐 `arrows: []`。
 
 ## 3. 带样式、链接与备注
 
@@ -85,13 +83,13 @@
   "bgPatternColor": "#10a37f",
   "bgPatternOpacity": 15,
   "direction": 2,
-  "lineStyle": "straight"
+  "lineStyle": "branch"
 }
 ```
 
 ## 4. 带图片节点 + 伴生 `_img.json`
 
-**`roadmap.mm`**
+**`roadmap.mmf`**
 
 ```json
 {
@@ -194,7 +192,7 @@ themeTemplate: auroraLight | mintLight | clayLight | graphiteLight
 
 direction:     0 (向左) | 1 (向右) | 2 (双侧)
 
-lineStyle:     curve | straight | markmap | straightUnderline
+lineStyle:     curve | straight | elbow | step | branch
 
 backgroundPattern: none | dots | grid | crossDot
 ```

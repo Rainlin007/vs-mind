@@ -64,6 +64,12 @@ if (typeof (global as any).FileReader === 'undefined') {
         }
     };
 }
+if (typeof (global as any).MutationObserver === 'undefined') {
+    (global as any).MutationObserver = class {
+        observe() { }
+        disconnect() { }
+    };
+}
 
 // Mock MindElixir on window
 (global as any).window.MindElixir = sinon.stub();
@@ -205,7 +211,11 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 currentNode: null,
                 reshapeNode: sinon.spy(),
                 selectNode: sinon.spy(),
-                container: { focus: sinon.spy() }
+                container: {
+                    focus: sinon.spy(),
+                    addEventListener: sinon.spy(),
+                    querySelectorAll: sinon.stub().returns([])
+                }
             });
             mindElixirMock.RIGHT = 1;
             mindElixirMock.E = sinon.stub();
@@ -214,6 +224,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             const mockDiv = {
                 addEventListener: sinon.spy(),
                 appendChild: sinon.spy(),
+                setAttribute: sinon.spy(),
                 style: {},
                 querySelectorAll: sinon.stub().returns([])
             };

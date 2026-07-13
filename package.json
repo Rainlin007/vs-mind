@@ -63,13 +63,7 @@
         "displayName": "Mind Map",
         "selector": [
           {
-            "filenamePattern": "*.mm"
-          },
-          {
-            "filenamePattern": "*.mindmap"
-          },
-          {
-            "filenamePattern": "*.mdmm"
+            "filenamePattern": "*.mmf"
           }
         ],
         "priority": "default"

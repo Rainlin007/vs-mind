@@ -11,7 +11,7 @@ export async function run(): Promise<void> {
 
     const testsRoot = path.resolve(__dirname, '..');
 
-    const files = await glob.glob('suite/**/**.test.js', { cwd: testsRoot });
+    const files = await glob.glob('integration/**/*.test.js', { cwd: testsRoot });
 
     files.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));
 

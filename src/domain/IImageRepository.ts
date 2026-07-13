@@ -3,14 +3,14 @@ import { ImageMap } from './MindMap';
 export interface IImageRepository {
     /**
      * Reads the images for a given mind map file path.
-     * @param mindMapFsPath The file system path of the .mm or .mindmap file.
+     * @param mindMapFsPath The file system path of the .mmf file.
      * @returns A map of image IDs to base64 strings.
      */
     readImages(mindMapFsPath: string): Promise<ImageMap>;
 
     /**
      * Writes the images for a given mind map file path.
-     * @param mindMapFsPath The file system path of the .mm or .mindmap file.
+     * @param mindMapFsPath The file system path of the .mmf file.
      * @param images The map of image IDs to base64 strings.
      */
     writeImages(mindMapFsPath: string, images: ImageMap): Promise<void>;

@@ -1,20 +1,19 @@
 ---
-name: mm-format
+name: mmf-format
 description: >-
-  Describes the VS Mind mind map file format (.mm / .mindmap) — MindElixir JSON
-  schema, node tree, theme settings, and companion image files. Use when reading,
-  writing, generating, converting, or validating .mm or .mindmap files in
-  vs-mind, or when the user asks about mind map file structure.
+  Use when reading, writing, generating, or validating .mmf files in VS Mind,
+  or when a task depends on the MMF MindElixir JSON structure, node tree,
+  theme settings, or companion image files.
 ---
 
-# VS Mind `.mm` 文件格式
+# VS Mind `.mmf` 文件格式
 
 ## 核心事实
 
 | 项 | 说明 |
 | --- | --- |
-| 扩展名 | `.mm` 与 `.mindmap` 等价，同一格式 |
-| 编码 | UTF-8 纯文本 JSON（**不是** FreeMind XML） |
+| 扩展名 | `.mmf`，无其他别名 |
+| 编码 | UTF-8 纯文本 JSON |
 | 引擎 | [MindElixir](https://github.com/ssshooter/mind-elixir-core) 5.13.0 原生 JSON |
 | 图片 | 存于伴生文件 `{basename}_img.json`，主文件只保留节点 `image` 元数据 |
 
@@ -44,7 +43,7 @@ description: >-
 | `bgPatternColor` | `string` | `#808080` | 背景花纹颜色（hex） |
 | `bgPatternOpacity` | `number` | `5` | 花纹不透明度，范围 5–100 |
 | `direction` | `0\|1\|2` | `1` | 布局：`0` 向左，`1` 向右，`2` 双侧 |
-| `lineStyle` | enum | `curve` | `curve` \| `straight` \| `markmap` \| `straightUnderline` |
+| `lineStyle` | enum | `curve` | `curve` \| `straight` \| `elbow` \| `step` \| `branch` |
 
 `theme` 字段由编辑器根据 `themeTemplate` 运行时派生，**手写文件时只写 `themeTemplate`**。
 
@@ -97,8 +96,8 @@ description: >-
 
 与主文件同名，扩展名替换为 `_img.json`：
 
-- `project.mm` → `project_img.json`
-- `plan.mindmap` → `plan_img.json`
+- `project.mmf` → `project_img.json`
+- `plan.mmf` → `plan_img.json`
 
 ```json
 {
@@ -122,7 +121,6 @@ description: >-
 4. **保持树结构一致**：增删节点时同步更新父节点 `children`。
 5. **不要内联 base64 图片**到主文件；大图片放 `_img.json`。
 6. **省略可选字段**而非写 `null`（与 MindElixir 行为一致）。
-7. **旧文件兼容**：`example.mindmap` 含 `linkData: {}` 可保留，新文件用 `arrows: []`。
 
 ## 常见任务速查
 
@@ -166,7 +164,7 @@ description: >-
 
 ## 反模式（避免）
 
-- 将 `.mm` 当作 FreeMind XML
+- 为 MMF 添加 MindElixir 数据结构之外的自定义外层封装
 - 在 `topic` 中写 HTML（用 Markdown；仅 MindElixir 内部渲染用 `dangerouslySetInnerHTML`）
 - 修改 `id` 但不更新 `_img.json` 键名
 - 写入无效 `themeTemplate` / `direction` / `lineStyle` 枚举值

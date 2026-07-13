@@ -131,7 +131,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                     isInternalUpdate = true;
                     await this.updateTextDocument(
                         document,
-                        this.service.serializeWebviewContent(e.text, document.uri.fsPath),
+                        this.service.serializeWebviewContent(e.text),
                     );
                     isInternalUpdate = false;
 
@@ -146,7 +146,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                     return;
                 case 'exportFile': {
                     const format = e.format;
-                    if (format !== 'png' && format !== 'json' && format !== 'markdown' && format !== 'mdmm' && format !== 'plaintext') {
+                    if (format !== 'png' && format !== 'mmf' && format !== 'markdown' && format !== 'plaintext') {
                         return;
                     }
                     const defaultName = typeof e.defaultName === 'string'

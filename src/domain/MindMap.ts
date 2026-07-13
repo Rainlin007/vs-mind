@@ -31,7 +31,25 @@ export interface MindMapData {
     bgPatternColor?: string;
     bgPatternOpacity?: number;
     direction?: number;
-    lineStyle?: 'curve' | 'straight' | 'markmap' | 'straightUnderline';
+    lineStyle?: 'curve' | 'elbow' | 'straight' | 'branch' | 'step';
+}
+
+export function createDefaultMindMapData(): MindMapData {
+    return {
+        nodeData: {
+            id: 'root',
+            topic: 'Central Topic',
+            root: true,
+            children: [],
+        },
+        arrows: [],
+        themeTemplate: 'clayLight',
+        backgroundPattern: 'grid',
+        bgPatternColor: '#808080',
+        bgPatternOpacity: 5,
+        direction: 1,
+        lineStyle: 'curve',
+    };
 }
 
 export interface ImageMap {

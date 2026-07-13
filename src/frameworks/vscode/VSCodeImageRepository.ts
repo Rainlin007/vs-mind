@@ -2,11 +2,12 @@ import * as vscode from 'vscode';
 import { IImageRepository } from '../../domain/IImageRepository';
 import { ImageMap } from '../../domain/MindMap';
 import { transformToWebviewImages, transformToJsonImages } from '../../adapters/transform';
+import { getImageSidecarPath } from '../../adapters/imageSidecar';
 
 export class VSCodeImageRepository implements IImageRepository {
 
     public getImagesPath(mindMapFsPath: string): string {
-        return mindMapFsPath.replace(/\.(mm|mindmap)$/, '_img.json');
+        return getImageSidecarPath(mindMapFsPath);
     }
 
     public async readImages(mindMapFsPath: string): Promise<ImageMap> {

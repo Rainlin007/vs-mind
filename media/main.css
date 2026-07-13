@@ -395,6 +395,16 @@ body {
     display: none !important;
 }
 
+.map-container me-parent me-epd {
+    top: calc(50% - 9px);
+}
+
+.map-container .lines path,
+.map-container .subLines path {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 /* MindElixir disables text selection on the map; re-enable only in the inline editor */
 .mind-elixir-input,
 #input-box {
