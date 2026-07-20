@@ -1,5 +1,7 @@
 import type { NodeObj } from 'mind-elixir';
 
+type NodeWithAiNote = NodeObj & { ai_note?: string };
+
 export interface NodeInspectorMind {
     currentNode: {
         nodeObj?: NodeObj;
@@ -27,7 +29,7 @@ function resolveInspectorNode(node: InspectorNode): { nodeObj: NodeObj; style: R
 }
 
 /**
- * Node property inspector: font, color, hyperlink, and note.
+ * Node property inspector: font, color, hyperlink, note, and AI note.
  */
 export class NodeInspector {
     private content: HTMLElement | null;
@@ -36,6 +38,7 @@ export class NodeInspector {
     private colorInput: HTMLInputElement;
     private hyperlinkInput: HTMLInputElement | null;
     private noteInput: HTMLTextAreaElement | null;
+    private aiNoteInput: HTMLTextAreaElement | null;
     private editingNodeId: string | null = null;
 
     constructor(
@@ -48,6 +51,7 @@ export class NodeInspector {
         this.colorInput = document.getElementById('inspector-color') as HTMLInputElement;
         this.hyperlinkInput = document.getElementById('inspector-hyperlink') as HTMLInputElement | null;
         this.noteInput = document.getElementById('inspector-note') as HTMLTextAreaElement | null;
+        this.aiNoteInput = document.getElementById('inspector-ai-note') as HTMLTextAreaElement | null;
 
         this.initListeners();
     }
@@ -85,6 +89,11 @@ export class NodeInspector {
         this.noteInput?.addEventListener('blur', () => {
             const nodeId = this.editingNodeId ?? this.mind.currentNode?.nodeObj?.id ?? null;
             this.commitNote(this.noteInput?.value ?? '', nodeId);
+        });
+        this.aiNoteInput?.addEventListener('focus', () => this.captureEditingNodeId());
+        this.aiNoteInput?.addEventListener('blur', () => {
+            const nodeId = this.editingNodeId ?? this.mind.currentNode?.nodeObj?.id ?? null;
+            this.commitAiNote(this.aiNoteInput?.value ?? '', nodeId);
         });
     }
 
@@ -192,6 +201,28 @@ export class NodeInspector {
         this.onChange();
     }
 
+    private commitAiNote(rawValue: string, nodeId?: string | null) {
+        const node = this.resolveTargetNode(nodeId);
+        if (!node?.nodeObj) {
+            return;
+        }
+
+        const nodeObj = node.nodeObj as NodeWithAiNote;
+        const value = rawValue.trim() ? rawValue : '';
+        const current = nodeObj.ai_note || '';
+        if (value === current) {
+            return;
+        }
+
+        if (value) {
+            nodeObj.ai_note = value;
+        } else {
+            delete nodeObj.ai_note;
+        }
+
+        this.onChange();
+    }
+
     private focusMap() {
         this.mind.container?.focus();
     }
@@ -210,6 +241,7 @@ export class NodeInspector {
         this.colorInput.value = style.color || '#000000';
         if (this.hyperlinkInput) this.hyperlinkInput.value = nodeObj.hyperLink || '';
         if (this.noteInput) this.noteInput.value = nodeObj.note || '';
+        if (this.aiNoteInput) this.aiNoteInput.value = (nodeObj as NodeWithAiNote).ai_note || '';
         this.editingNodeId = nodeObj.id;
 
         this.emptyHint.classList.add('hidden');
@@ -238,6 +270,9 @@ export class NodeInspector {
         if (this.hyperlinkInput) {
             this.commitHyperlink(this.hyperlinkInput.value, this.editingNodeId);
         }
+        if (this.aiNoteInput) {
+            this.commitAiNote(this.aiNoteInput.value, this.editingNodeId);
+        }
     }
 
     private setPanelEnabled(enabled: boolean) {
@@ -245,6 +280,7 @@ export class NodeInspector {
         this.colorInput.disabled = !enabled;
         if (this.hyperlinkInput) this.hyperlinkInput.disabled = !enabled;
         if (this.noteInput) this.noteInput.disabled = !enabled;
+        if (this.aiNoteInput) this.aiNoteInput.disabled = !enabled;
         this.content?.querySelectorAll('.color-swatch').forEach((swatch) => {
             (swatch as HTMLElement).style.pointerEvents = enabled ? '' : 'none';
             (swatch as HTMLElement).style.opacity = enabled ? '' : '0.4';

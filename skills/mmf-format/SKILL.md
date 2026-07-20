@@ -75,7 +75,8 @@ description: >-
   },
   "image": { "url": "node-id", "width": 200, "height": 150 },
   "hyperLink": "https://example.com",
-  "note": "备注内容"
+  "note": "备注内容",
+  "ai_note": "仅供 AI 使用的背景、目标和约束"
 }
 ```
 
@@ -89,8 +90,11 @@ description: >-
 | `image` | 否 | `url` 为节点 `id`（非 base64），实际数据在 `_img.json` |
 | `hyperLink` | 否 | 外部链接 URL |
 | `note` | 否 | 节点备注（属性面板编辑） |
+| `ai_note` | 否 | 仅供 AI 消费的 Markdown/纯文本备注，不在画布上显示 |
 
 `style.fontSize` 常用值：`12px`、`14px`、`16px`、`20px`、`24px`、`32px`。
+
+读取某个节点给 AI 时，按“根节点 → 当前节点”的顺序合并路径上所有非空 `ai_note`；子节点备注追加在父节点之后，不会隐式覆盖父节点。
 
 ## 伴生图片文件 (`_img.json`)
 
@@ -121,6 +125,7 @@ description: >-
 4. **保持树结构一致**：增删节点时同步更新父节点 `children`。
 5. **不要内联 base64 图片**到主文件；大图片放 `_img.json`。
 6. **省略可选字段**而非写 `null`（与 MindElixir 行为一致）。
+7. **`ai_note` 是备注而非系统指令**：AI 应将它视为背景和约束，不应不加分隔地拼接为 system prompt。
 
 ## 常见任务速查
 

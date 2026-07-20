@@ -9,6 +9,7 @@ import { MAP_TOOLBAR_HTML } from '../webview/toolbarHtml';
 export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 
     private static readonly viewType = 'vscode-mm.mindmap';
+    private static readonly autoSaveIntervalMs = 5_000;
     private static readonly panels = new Map<string, vscode.WebviewPanel>();
     private static activeUri: string | undefined;
 
@@ -60,6 +61,26 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
 
         let disposed = false;
+        let saveInProgress = false;
+
+        const saveDirtyDocument = async (): Promise<void> => {
+            if (disposed || document.isClosed || !document.isDirty || saveInProgress) {
+                return;
+            }
+
+            saveInProgress = true;
+            try {
+                await document.save();
+            } catch (error) {
+                console.error(`Auto-save failed for ${document.uri.toString()}:`, error);
+            } finally {
+                saveInProgress = false;
+            }
+        };
+
+        const autoSaveTimer = setInterval(() => {
+            void saveDirtyDocument();
+        }, MindMapEditorProvider.autoSaveIntervalMs);
 
         const updateWebview = async () => {
             if (disposed) {
@@ -104,6 +125,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
         // Make sure we get rid of the listener when our editor is closed.
         webviewPanel.onDidDispose(() => {
             disposed = true;
+            clearInterval(autoSaveTimer);
             changeDocumentSubscription.dispose();
             MindMapEditorProvider.panels.delete(documentUri);
             if (MindMapEditorProvider.activeUri === documentUri) {
@@ -244,7 +266,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 						<div class="side-panel-header">
 							<div class="side-panel-tabs">
 								<button id="panel-tab-node" class="side-panel-tab active" type="button" data-panel="node">节点</button>
-								<button id="panel-tab-theme" class="side-panel-tab" type="button" data-panel="theme">主题</button>
+								<button id="panel-tab-theme" class="side-panel-tab" type="button" data-panel="theme">全局</button>
 							</div>
 							<button id="btn-close-panel" class="panel-close-btn" type="button" title="关闭">&times;</button>
 						</div>
