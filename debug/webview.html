@@ -60,7 +60,7 @@
       <div class="side-panel-header">
         <div class="side-panel-tabs">
           <button id="panel-tab-node" class="side-panel-tab active" type="button" data-panel="node">节点</button>
-          <button id="panel-tab-theme" class="side-panel-tab" type="button" data-panel="theme">主题</button>
+          <button id="panel-tab-theme" class="side-panel-tab" type="button" data-panel="theme">全局</button>
         </div>
         <button id="btn-close-panel" class="panel-close-btn" type="button">&times;</button>
       </div>
@@ -86,6 +86,10 @@
             <div class="panel-section">
               <label class="panel-label" for="inspector-note">注释</label>
               <textarea id="inspector-note" class="panel-textarea" rows="3"></textarea>
+            </div>
+            <div class="panel-section">
+              <label class="panel-label" for="inspector-ai-note">AI 备注</label>
+              <textarea id="inspector-ai-note" class="panel-textarea" rows="4" placeholder="仅提供给 AI 的背景、目标和约束"></textarea>
             </div>
             <p class="panel-hint">节点文字支持 Markdown：**粗体**、*斜体*、[链接](url)、$E=mc^2$</p>
           </div>
@@ -136,6 +140,7 @@
         children: [{
           id: 'child',
           topic: 'Child Topic',
+          note: 'Persistent note',
           children: [{
             id: 'grandchild',
             topic: 'Grandchild Topic',
@@ -169,6 +174,15 @@
       await new Promise((r) => setTimeout(r, 300));
 
       log('mind map rendered', !!document.querySelector('me-tpc'));
+      const notedTopic = Array.from(document.querySelectorAll('me-tpc'))
+        .find((topic) => topic.nodeObj?.id === 'child');
+      log('note marker rendered', notedTopic?.classList.contains('has-note') === true);
+      notedTopic?.click();
+      await new Promise((r) => setTimeout(r, 50));
+      log('note marker survives selection', notedTopic?.classList.contains('has-note') === true);
+      log('note marker offset from node', notedTopic
+        && getComputedStyle(notedTopic, '::after').right === '-14px'
+        && getComputedStyle(notedTopic, '::after').top === '-7px');
       const collapseControls = Array.from(document.querySelectorAll('me-epd.minus'));
       log('collapse controls vertically centered', collapseControls.length >= 2 && collapseControls.every((control) => {
         const controlRect = control.getBoundingClientRect();
@@ -177,7 +191,17 @@
         const parentCenter = parentRect.top + parentRect.height / 2;
         return Math.abs(controlCenter - parentCenter) < 1;
       }));
-      log('side panel starts collapsed', document.getElementById('side-panel').classList.contains('hidden'));
+      log('side panel starts expanded', !document.getElementById('side-panel').classList.contains('hidden'));
+
+      const aiNoteInput = document.getElementById('inspector-ai-note');
+      log('AI note field present', !!aiNoteInput);
+      aiNoteInput.value = 'Only consider offline deployment.';
+      aiNoteInput.dispatchEvent(new Event('focus'));
+      aiNoteInput.dispatchEvent(new Event('blur'));
+      await new Promise((r) => setTimeout(r, 50));
+      const aiNoteMessage = window.__TEST__.lastMessage;
+      log('AI note saved on node', aiNoteMessage?.type === 'change'
+        && JSON.parse(aiNoteMessage.text).nodeData.children[0].ai_note === 'Only consider offline deployment.');
 
       const exportTrigger = document.getElementById('export-trigger');
       const mmfExport = document.querySelector('[data-export="mmf"]');
@@ -214,6 +238,7 @@
 
       document.getElementById('panel-tab-theme').click();
       await new Promise((r) => setTimeout(r, 50));
+      log('global tab label', document.getElementById('panel-tab-theme').textContent.trim() === '全局');
       log('theme tab active', document.getElementById('panel-page-theme').classList.contains('active'));
 
       const select = document.getElementById('theme-select');

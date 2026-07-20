@@ -15,7 +15,7 @@ export class SidePanel {
     onVisibilityChange?: (visible: boolean) => void;
     onWidthChange?: (width: number) => void;
 
-    constructor(initialWidth = DEFAULT_SIDE_PANEL_WIDTH, initialVisible = false) {
+    constructor(initialWidth = DEFAULT_SIDE_PANEL_WIDTH, initialVisible = true) {
         this.panel = document.getElementById('side-panel') as HTMLElement;
         this.resizer = document.getElementById('side-panel-resizer');
         this.tabs = Array.from(document.querySelectorAll('.side-panel-tab')) as HTMLButtonElement[];
@@ -27,7 +27,9 @@ export class SidePanel {
         this.applyWidth();
         this.initListeners();
         this.initResize();
-        if (!initialVisible) {
+        if (initialVisible) {
+            this.panel?.classList.remove('hidden');
+        } else {
             this.panel?.classList.add('hidden');
         }
     }

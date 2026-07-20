@@ -225,7 +225,7 @@ export class MindMapApp {
         const sidePanelWidth = typeof this.state.sidePanelWidth === 'number'
             ? this.state.sidePanelWidth
             : DEFAULT_SIDE_PANEL_WIDTH;
-        const sidePanelVisible = this.state.sidePanelVisible === true;
+        const sidePanelVisible = this.state.sidePanelVisible !== false;
         this.sidePanel = new SidePanel(sidePanelWidth, sidePanelVisible);
         this.sidePanel.onVisibilityChange = (visible) => {
             this.state.sidePanelVisible = visible;

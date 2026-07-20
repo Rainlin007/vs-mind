@@ -107,6 +107,7 @@ const themeDomIds = [
     'inspector-color',
     'inspector-hyperlink',
     'inspector-note',
+    'inspector-ai-note',
     'theme-select',
     'direction-select',
     'line-style-select',
