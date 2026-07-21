@@ -203,6 +203,23 @@
       log('AI note saved on node', aiNoteMessage?.type === 'change'
         && JSON.parse(aiNoteMessage.text).nodeData.children[0].ai_note === 'Only consider offline deployment.');
 
+      const imageBytes = Uint8Array.from(
+        atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9WlOkAAAAASUVORK5CYII='),
+        (char) => char.charCodeAt(0),
+      );
+      const imageTransfer = new DataTransfer();
+      imageTransfer.items.add(new File([imageBytes], 'clipboard.png', { type: 'image/png' }));
+      document.dispatchEvent(new ClipboardEvent('paste', {
+        clipboardData: imageTransfer,
+        bubbles: true,
+        cancelable: true,
+      }));
+      await new Promise((r) => setTimeout(r, 300));
+      const imagePasteMessage = window.__TEST__.lastMessage;
+      log('clipboard image pasted into selected node', imagePasteMessage?.type === 'change'
+        && imagePasteMessage.images?.child?.startsWith('data:image/png')
+        && !!JSON.parse(imagePasteMessage.text).nodeData.children[0].image);
+
       const exportTrigger = document.getElementById('export-trigger');
       const mmfExport = document.querySelector('[data-export="mmf"]');
       log('MMF export control present', !!exportTrigger && !!mmfExport);

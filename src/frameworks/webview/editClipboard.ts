@@ -180,7 +180,7 @@ function attachEditUndoRedo(inputBox: HTMLDivElement): void {
         }
 
         const key = event.key.toLowerCase();
-        const isRedo = (key === 'z' && event.shiftKey) || (key === 'y' && event.shiftKey);
+        const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
         const isUndo = key === 'z' && !event.shiftKey;
         if (!isUndo && !isRedo) {
             return;

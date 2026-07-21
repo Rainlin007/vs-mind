@@ -227,10 +227,12 @@ export class NodeInspector {
         this.mind.container?.focus();
     }
 
-    show(node: InspectorNode) {
+    show(node: InspectorNode, commitPendingEdits = true) {
         if (!this.content || !this.emptyHint) return;
 
-        this.commitPendingEdits();
+        if (commitPendingEdits) {
+            this.commitPendingEdits();
+        }
 
         const resolved = resolveInspectorNode(node);
         if (!resolved) return;
@@ -249,10 +251,12 @@ export class NodeInspector {
         this.setPanelEnabled(true);
     }
 
-    hide() {
+    hide(commitPendingEdits = true) {
         if (!this.content || !this.emptyHint) return;
 
-        this.commitPendingEdits();
+        if (commitPendingEdits) {
+            this.commitPendingEdits();
+        }
 
         this.emptyHint.classList.remove('hidden');
         this.content.classList.add('hidden');

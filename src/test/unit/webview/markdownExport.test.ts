@@ -11,6 +11,7 @@ describe('markdownExport Unit Test Suite', () => {
                 root: true,
                 hyperLink: 'https://example.com',
                 note: 'Root note',
+                ai_note: 'Use the approved constraints only.',
                 tags: ['planning', ''],
                 image: {
                     url: 'data:image/png;base64,abc',
@@ -36,6 +37,7 @@ describe('markdownExport Unit Test Suite', () => {
             '# [Central Topic](https://example.com) #planning',
             '',
             '> Root note',
+            '> **AI 备注：** Use the approved constraints only.',
             '![Central Topic](data:image/png;base64,abc)',
             '',
             '- Child 2',
