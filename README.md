@@ -17,6 +17,7 @@ A VS Code extension that provides a visual mind map editor. Edit `.mmf` files di
 - **Background patterns** — None, dots, grid, or cross-dot with adjustable color and opacity
 - **Node images** — Paste images from clipboard; click to preview full size
 - **Export options** — Export to MMF, PNG, plaintext, or Markdown
+- **AI-readable context** — Markdown export includes node notes and AI notes; the bundled `mmf-format` skill converts MMF before an agent reads it
 - **Resizable panel** — Drag the left edge of the side panel to adjust width (180–520 px)
 - **Plain JSON storage** — Mind map data is saved as readable JSON; easy to version-control with Git
 
@@ -52,6 +53,14 @@ Press **F5** in VS Code to launch the Extension Development Host, then open or c
 5. In the **Global** tab, change color scheme, layout direction, line style, and background pattern.
 6. Drag the **left edge** of the property panel to resize it.
 7. Changes are saved automatically to the file every 5 seconds.
+
+### Read-only AI workflow
+
+The bundled [`mmf-format` skill](skills/mmf-format/SKILL.md) requires agents to convert an MMF file with `scripts/mmf-to-markdown.mjs` and read only the generated Markdown. The source `.mmf` and companion image file remain user-owned and unchanged.
+
+```bash
+node skills/mmf-format/scripts/mmf-to-markdown.mjs plan.mmf --output context.md
+```
 
 ### Keyboard & Interaction
 
@@ -157,6 +166,7 @@ Nodes may include an optional `ai_note` string. It is stored in the MMF file for
 - **背景花纹** — 无 / 点阵 / 网格 / 十字点，可调颜色与透明度
 - **节点图片** — 从剪贴板粘贴图片，点击可全屏预览
 - **导出选项** — 支持导出 MMF、PNG、纯文本或 Markdown
+- **AI 可读上下文** — Markdown 导出包含节点注释和 AI 备注；内置 `mmf-format` skill 会先转换 MMF，再交给 Agent 读取
 - **面板可调宽** — 拖动属性面板左边缘调整宽度（180–520 px）
 - **纯 JSON 存储** — 文件内容为可读 JSON，方便 Git 版本管理
 
@@ -192,6 +202,14 @@ npm run compile
 5. 在 **全局** Tab 中可切换配色、布局方向、线条样式和背景花纹。
 6. 拖动属性面板**左边缘**可调整面板宽度。
 7. 修改会每 5 秒自动保存到文件。
+
+### AI 只读工作流
+
+内置的 [`mmf-format` skill](skills/mmf-format/SKILL.md) 强制 Agent 先通过 `scripts/mmf-to-markdown.mjs` 将 MMF 转成 Markdown，然后只读取生成结果。源 `.mmf` 与图片伴生文件始终由用户维护，不会被 AI 修改。
+
+```bash
+node skills/mmf-format/scripts/mmf-to-markdown.mjs plan.mmf --output context.md
+```
 
 ### 快捷键与交互
 

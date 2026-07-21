@@ -1,7 +1,8 @@
 
 import * as assert from 'assert';
 import * as sinon from 'sinon';
-import { ImageProcessor, ImageModal, MindMapApp } from '../../frameworks/webview/main';
+import { getClipboardImageFile, ImageProcessor, ImageModal, MindMapApp } from '../../frameworks/webview/main';
+import { MindMapHistory } from '../../frameworks/webview/history';
 
 // --- DOM Mocks ---
 // We need to set up the global environment before importing/using the classes if they rely on globals at module level.
@@ -119,6 +120,9 @@ const themeDomIds = [
 ];
 
 (global as any).document.getElementById = sinon.stub().callsFake((id: string) => {
+    if (id === 'input-box') {
+        return null;
+    }
     const el = createDomElement();
     if (themeDomIds.includes(id)) {
         (el as any).value = id === 'bg-pattern-opacity' ? '5' : '';
@@ -136,6 +140,36 @@ const themeDomIds = [
 
 
 describe('Webview Refactoring Tests (TypeScript)', () => {
+
+    describe('MindMapHistory', () => {
+        it('should undo and redo complete document and image snapshots one step at a time', () => {
+            const history = new MindMapHistory();
+            history.reset({ text: 'initial', images: { root: 'old-image' } });
+            history.record({ text: 'ai-note', images: { root: 'old-image' } });
+            history.record({ text: 'renamed', images: { root: 'new-image' } });
+
+            assert.deepStrictEqual(history.undo(), {
+                text: 'ai-note',
+                images: { root: 'old-image' },
+            });
+            assert.deepStrictEqual(history.undo(), {
+                text: 'initial',
+                images: { root: 'old-image' },
+            });
+            assert.deepStrictEqual(history.redo(), {
+                text: 'ai-note',
+                images: { root: 'old-image' },
+            });
+        });
+
+        it('should ignore duplicate snapshots', () => {
+            const history = new MindMapHistory();
+            history.reset({ text: 'same', images: {} });
+
+            assert.strictEqual(history.record({ text: 'same', images: {} }), false);
+            assert.strictEqual(history.undo(), null);
+        });
+    });
 
     describe('ImageProcessor', () => {
         it('should resize image using mock canvas', async () => {
@@ -192,19 +226,21 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
         let app: MindMapApp;
 
         beforeEach(() => {
+            ((global as any).document.addEventListener as sinon.SinonSpy).resetHistory();
             vscodeMock = {
                 getState: sinon.stub().returns({}),
                 postMessage: sinon.spy()
             };
             mindElixirMock = sinon.stub().returns({
                 bus: { addListener: sinon.spy() },
-                init: sinon.spy(),
-                refresh: sinon.spy(),
+                init: sinon.stub(),
+                refresh: sinon.stub(),
                 changeTheme: sinon.spy(),
                 initLeft: sinon.spy(),
                 initRight: sinon.spy(),
                 initSide: sinon.spy(),
                 linkDiv: sinon.spy(),
+                direction: 1,
                 theme: {},
                 generateMainBranch: null,
                 generateSubBranch: null,
@@ -212,6 +248,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 currentNode: null,
                 reshapeNode: sinon.spy(),
                 selectNode: sinon.spy(),
+                findEle: sinon.stub().returns(null),
                 container: {
                     focus: sinon.spy(),
                     addEventListener: sinon.spy(),
@@ -238,6 +275,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
 
         it('should initialize MindElixir', () => {
             assert.ok(mindElixirMock.called);
+            assert.strictEqual(mindElixirMock.firstCall.args[0].allowUndo, false);
             assert.ok((app.mind.bus.addListener as any).calledWith('operation', sinon.match.func));
         });
 
@@ -260,7 +298,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             assert.strictEqual(initArg.direction, 1);
             assert.strictEqual(initArg.lineStyle, 'curve');
             assert.ok(initArg.theme);
-            assert.ok((app.mind.refresh as any).called);
+            assert.ok((app.mind.init as any).calledOnce);
         });
 
         it('should restore previous selection on update', () => {
@@ -271,9 +309,9 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 style: {}
             };
 
-            // Mock MindElixir.E to return an element when queried
+            // Mock the instance lookup to return an element when queried
             const mockNodeElement = { id: selectedNodeId };
-            mindElixirMock.E.withArgs(selectedNodeId).returns(mockNodeElement);
+            (app.mind.findEle as sinon.SinonStub).withArgs(selectedNodeId).returns(mockNodeElement);
 
             const message = { type: 'update', text: '{}' };
 
@@ -284,5 +322,157 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             assert.ok((app.mind.selectNode as any).calledWith(mockNodeElement), 'selectNode should be called with the restored node element');
             assert.ok((app.mind.container.focus as any).called, 'container should be focused');
         });
+
+        it('should initialize MindElixir only once across external document updates', () => {
+            (app as any).handleVscodeMessage({
+                type: 'update',
+                text: JSON.stringify({ nodeData: { id: 'root', topic: 'one', children: [] } }),
+                images: {},
+            });
+            (app as any).handleVscodeMessage({
+                type: 'update',
+                text: JSON.stringify({ nodeData: { id: 'root', topic: 'two', children: [] } }),
+                images: {},
+            });
+
+            assert.ok((app.mind.init as sinon.SinonSpy).calledOnce);
+            assert.ok((app.mind.refresh as sinon.SinonSpy).calledWith(sinon.match({
+                nodeData: sinon.match({ topic: 'two' }),
+            })));
+        });
+
+        it('should undo AI notes and later node edits independently', () => {
+            let data: any;
+            (app.mind.init as sinon.SinonStub).callsFake((doc: any) => {
+                data = JSON.parse(JSON.stringify(doc));
+            });
+            (app.mind.refresh as sinon.SinonStub).callsFake((doc?: any) => {
+                if (doc) data = JSON.parse(JSON.stringify(doc));
+            });
+            (app.mind.getData as sinon.SinonStub).callsFake(() => JSON.parse(JSON.stringify(data)));
+
+            (app as any).handleVscodeMessage({
+                type: 'update',
+                text: JSON.stringify({ nodeData: { id: 'root', topic: 'original', children: [] } }),
+                images: {},
+            });
+            data.nodeData.ai_note = 'only for AI';
+            app.saveChanges();
+            data.nodeData.topic = 'renamed';
+            app.saveChanges();
+
+            const echoedChange = vscodeMock.postMessage.lastCall.args[0];
+            (app as any).handleVscodeMessage({
+                type: 'update',
+                text: echoedChange.text,
+                images: echoedChange.images,
+            });
+
+            const keydown = (app.mind.container.addEventListener as sinon.SinonSpy)
+                .getCalls()
+                .find(call => call.args[0] === 'keydown')?.args[1];
+            assert.ok(keydown, 'application undo listener should be registered');
+
+            keydown({
+                key: 'z', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false,
+                target: { closest: () => null }, preventDefault: sinon.spy(), stopPropagation: sinon.spy(),
+            });
+            assert.strictEqual(data.nodeData.topic, 'original');
+            assert.strictEqual(data.nodeData.ai_note, 'only for AI');
+
+            keydown({
+                key: 'z', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false,
+                target: { closest: () => null }, preventDefault: sinon.spy(), stopPropagation: sinon.spy(),
+            });
+            assert.strictEqual(data.nodeData.ai_note, undefined);
+
+            keydown({
+                key: 'z', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true,
+                target: { closest: () => null }, preventDefault: sinon.spy(), stopPropagation: sinon.spy(),
+            });
+            assert.strictEqual(data.nodeData.ai_note, 'only for AI');
+            assert.strictEqual(data.nodeData.topic, 'original');
+        });
+
+        it('should restore the original image cache on undo', () => {
+            let data: any;
+            (app.mind.init as sinon.SinonStub).callsFake((doc: any) => {
+                data = JSON.parse(JSON.stringify(doc));
+            });
+            (app.mind.refresh as sinon.SinonStub).callsFake((doc?: any) => {
+                if (doc) data = JSON.parse(JSON.stringify(doc));
+            });
+            (app.mind.getData as sinon.SinonStub).callsFake(() => JSON.parse(JSON.stringify(data)));
+
+            (app as any).handleVscodeMessage({
+                type: 'update',
+                text: JSON.stringify({ nodeData: { id: 'root', topic: 'image', children: [] } }),
+                images: { root: 'old-image' },
+            });
+            (app as any).originalImageCache.root = 'new-image';
+            data.nodeData.image = { url: 'thumbnail', width: 10, height: 10 };
+            app.saveChanges();
+
+            (app as any).undo();
+
+            assert.deepStrictEqual((app as any).originalImageCache, { root: 'old-image' });
+            assert.strictEqual(data.nodeData.image, undefined);
+        });
+
+        it('should paste an image into the selected node from the document', async () => {
+            const targetNode = {
+                nodeObj: { id: 'image-node', topic: 'Image node' },
+                style: {}
+            };
+            app.mind.currentNode = targetNode;
+            const renderedNode = { id: 'image-node' };
+            mindElixirMock.E.withArgs('image-node').returns(renderedNode);
+            const resizeStub = sinon.stub(ImageProcessor, 'resizeImage').resolves({
+                base64: 'data:image/jpeg;base64,resized',
+                width: 200,
+                height: 120,
+            });
+            const imageFile = { type: 'image/png' } as File;
+            const preventDefault = sinon.spy();
+            const stopImmediatePropagation = sinon.spy();
+            const clipboardEvent = {
+                clipboardData: {
+                    items: [{ type: 'image/png', getAsFile: () => imageFile }],
+                    files: [],
+                },
+                preventDefault,
+                stopImmediatePropagation,
+            } as unknown as ClipboardEvent;
+            const pasteListener = ((global as any).document.addEventListener as sinon.SinonSpy)
+                .getCalls()
+                .find(call => call.args[0] === 'paste' && call.args[2] === true)?.args[1];
+
+            assert.ok(pasteListener, 'document-level image paste listener should be registered');
+            pasteListener(clipboardEvent);
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            assert.ok(preventDefault.called);
+            assert.ok(stopImmediatePropagation.calledOnce);
+            assert.ok((app.mind.reshapeNode as any).calledWith(targetNode, {
+                image: {
+                    url: 'data:image/jpeg;base64,resized',
+                    width: 200,
+                    height: 120,
+                }
+            }));
+            assert.deepStrictEqual((app as any).originalImageCache, {
+                'image-node': 'data:image/png;base64,mock'
+            });
+            resizeStub.restore();
+        });
+    });
+
+    it('should find clipboard images from the files fallback', () => {
+        const imageFile = { type: 'image/png' } as File;
+        const event = {
+            clipboardData: { items: [], files: [imageFile] }
+        } as unknown as ClipboardEvent;
+
+        assert.strictEqual(getClipboardImageFile(event), imageFile);
     });
 });

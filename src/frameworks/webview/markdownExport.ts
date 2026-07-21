@@ -1,5 +1,7 @@
 import type { MindElixirData, NodeObj, TagObj } from 'mind-elixir';
 
+type NodeWithAiNote = NodeObj & { ai_note?: string };
+
 function decodeHtmlEntities(text: string): string {
     const namedEntities: Record<string, string> = {
         amp: '&',
@@ -88,6 +90,10 @@ function getNodeDetailLines(node: NodeObj, indent: string): string[] {
 
     for (const noteLine of normalizeBlockLines(node.note)) {
         lines.push(`${indent}> ${noteLine}`);
+    }
+
+    for (const aiNoteLine of normalizeBlockLines((node as NodeWithAiNote).ai_note)) {
+        lines.push(`${indent}> **AI 备注：** ${aiNoteLine}`);
     }
 
     const imageUrl = node.image?.url;

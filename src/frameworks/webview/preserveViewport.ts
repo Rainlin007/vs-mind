@@ -12,8 +12,6 @@ interface ViewportSnapshot {
 }
 
 export interface ViewportPreservingMind {
-    undo?: () => void;
-    redo?: () => void;
     map: HTMLElement;
     scaleVal: number;
     currentNodes?: HTMLElement[];
@@ -81,7 +79,7 @@ function restoreViewport(mind: ViewportPreservingMind, snapshot: ViewportSnapsho
     mind.map.style.transform = `translate3d(${x + dx}px, ${y + dy}px, 0) scale(${snapshot.scaleVal})`;
 }
 
-function runWithViewportPreserved(
+export function runWithViewportPreserved(
     mind: ViewportPreservingMind,
     action: () => void,
     onHistoryChange?: () => void,
@@ -97,23 +95,4 @@ function runWithViewportPreserved(
         restoreViewport(mind, snapshot);
         onHistoryChange?.();
     });
-}
-
-export function setupUndoRedoViewportPreservation(
-    mind: ViewportPreservingMind,
-    onHistoryChange?: () => void,
-): void {
-    const originalUndo = mind.undo?.bind(mind);
-    const originalRedo = mind.redo?.bind(mind);
-    if (!originalUndo || !originalRedo) {
-        return;
-    }
-
-    mind.undo = () => {
-        runWithViewportPreserved(mind, originalUndo, onHistoryChange);
-    };
-
-    mind.redo = () => {
-        runWithViewportPreserved(mind, originalRedo, onHistoryChange);
-    };
 }
