@@ -221,7 +221,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 redo: sinon.spy(),
                 clearHistory: sinon.spy(),
                 currentNode: null,
-                reshapeNode: sinon.spy(),
+                reshapeNode: sinon.stub(),
                 selectNode: sinon.spy(),
                 findEle: sinon.stub().returns(null),
                 container: {
@@ -258,11 +258,18 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             const message = {
                 type: 'update',
                 text: JSON.stringify({
-                    nodeData: { id: 'root', topic: 'new', root: true, children: [] },
+                    nodeData: {
+                        id: '1',
+                        topic: 'new',
+                        root: true,
+                        image: { url: 'thumbnail', width: 10, height: 10 },
+                        children: [],
+                    },
                     arrows: [],
                 }),
                 images: { "1": "base64" }
             };
+            (app.mind.getData as sinon.SinonStub).returns(JSON.parse(message.text));
             (app as any).handleVscodeMessage(message);
 
             assert.deepStrictEqual((app as any).originalImageCache, { "1": "base64" });
@@ -288,7 +295,13 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             const mockNodeElement = { id: selectedNodeId };
             (app.mind.findEle as sinon.SinonStub).withArgs(selectedNodeId).returns(mockNodeElement);
 
-            const message = { type: 'update', text: '{}' };
+            const message = {
+                type: 'update',
+                text: JSON.stringify({
+                    nodeData: { id: 'root', topic: 'Root', children: [] },
+                    arrows: [],
+                }),
+            };
 
             // Act
             (app as any).handleVscodeMessage(message);
@@ -374,10 +387,17 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
 
         it('should paste an image into the selected node from the document', async () => {
             const targetNode = {
-                nodeObj: { id: 'image-node', topic: 'Image node' },
+                nodeObj: { id: 'image-node', topic: 'Image node', children: [] } as any,
                 style: {}
             };
             app.mind.currentNode = targetNode;
+            (app.mind.reshapeNode as sinon.SinonStub).callsFake((_node: any, patch: any) => {
+                Object.assign(targetNode.nodeObj, patch);
+            });
+            (app.mind.getData as sinon.SinonStub).callsFake(() => ({
+                nodeData: JSON.parse(JSON.stringify(targetNode.nodeObj)),
+                arrows: [],
+            }));
             const renderedNode = { id: 'image-node' };
             mindElixirMock.E.withArgs('image-node').returns(renderedNode);
             const resizeStub = sinon.stub(ImageProcessor, 'resizeImage').resolves({
