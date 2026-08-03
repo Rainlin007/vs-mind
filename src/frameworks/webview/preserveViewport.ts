@@ -12,6 +12,8 @@ interface ViewportSnapshot {
 }
 
 export interface ViewportPreservingMind {
+    undo?: () => void;
+    redo?: () => void;
     map: HTMLElement;
     scaleVal: number;
     currentNodes?: HTMLElement[];
@@ -95,4 +97,27 @@ export function runWithViewportPreserved(
         restoreViewport(mind, snapshot);
         onHistoryChange?.();
     });
+}
+
+/**
+ * Keep MindElixir as the sole owner of the history stack while preserving the
+ * viewport and notifying the host after a native undo/redo has completed.
+ */
+export function setupUndoRedoViewportPreservation(
+    mind: ViewportPreservingMind,
+    onHistoryChange?: () => void,
+): void {
+    const originalUndo = mind.undo?.bind(mind);
+    const originalRedo = mind.redo?.bind(mind);
+    if (!originalUndo || !originalRedo) {
+        return;
+    }
+
+    mind.undo = () => {
+        runWithViewportPreserved(mind, originalUndo, onHistoryChange);
+    };
+
+    mind.redo = () => {
+        runWithViewportPreserved(mind, originalRedo, onHistoryChange);
+    };
 }

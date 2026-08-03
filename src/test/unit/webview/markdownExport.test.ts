@@ -62,4 +62,46 @@ describe('markdownExport Unit Test Suite', () => {
 
         assert.strictEqual(toExportMarkdown(data), '# HTML Topic & More\n');
     });
+
+    it('should place summaries after their grouped sibling range', () => {
+        const data = {
+            nodeData: {
+                id: 'root',
+                topic: 'Delivery Plan',
+                children: [
+                    {
+                        id: 'research',
+                        topic: 'Research',
+                        children: [{ id: 'interviews', topic: 'Interviews' }],
+                    },
+                    { id: 'build', topic: 'Build' },
+                    { id: 'ship', topic: 'Ship' },
+                ],
+            },
+            summaries: [{
+                id: 'summary-1',
+                parent: 'root',
+                start: 0,
+                end: 1,
+                label: 'Research and implementation are ready for review.',
+            }],
+        } as unknown as MindElixirData;
+
+        assert.strictEqual(toExportMarkdown(data), [
+            '# Delivery Plan',
+            '',
+            '## Research',
+            '',
+            '- Interviews',
+            '',
+            '## Build',
+            '',
+            '## 摘要（Research ～ Build）',
+            '',
+            'Research and implementation are ready for review.',
+            '',
+            '## Ship',
+            '',
+        ].join('\n'));
+    });
 });

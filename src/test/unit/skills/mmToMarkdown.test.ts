@@ -19,8 +19,18 @@ describe('mmf-format conversion script', () => {
                     note: 'Human context',
                     ai_note: 'Respect this constraint',
                     image: { url: 'data:image/png;base64,large', width: 10, height: 10 },
-                    children: [{ id: 'child', topic: 'Next step' }],
+                    children: [
+                        { id: 'child', topic: 'Next step' },
+                        { id: 'review', topic: 'Review' },
+                    ],
                 },
+                summaries: [{
+                    id: 'summary-1',
+                    parent: 'root',
+                    start: 0,
+                    end: 1,
+                    label: 'These steps form the delivery checkpoint.',
+                }],
                 themeTemplate: 'clayLight',
             }), 'utf8');
 
@@ -32,7 +42,10 @@ describe('mmf-format conversion script', () => {
             assert.ok(markdown.includes('# Product Plan'));
             assert.ok(markdown.includes('> **备注：** Human context'));
             assert.ok(markdown.includes('> **AI 备注：** Respect this constraint'));
-            assert.ok(markdown.includes('- Next step'));
+            assert.ok(markdown.includes('## Next step'));
+            assert.ok(markdown.includes('## Review'));
+            assert.ok(markdown.includes('## 摘要（Next step ～ Review）'));
+            assert.ok(markdown.includes('These steps form the delivery checkpoint.'));
             assert.ok(markdown.includes('图片数据未加入文本上下文'));
             assert.ok(!markdown.includes('data:image/png;base64,large'));
             assert.ok(!markdown.includes('themeTemplate'));

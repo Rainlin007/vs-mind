@@ -90,27 +90,75 @@ function hasChildren(node) {
     return Array.isArray(node.children) && node.children.length > 0;
 }
 
+function getValidSummaries(node, summaries) {
+    const childCount = Array.isArray(node.children) ? node.children.length : 0;
+    return summaries
+        .filter(summary => (
+            summary?.parent === node.id
+            && Number.isInteger(summary.start)
+            && Number.isInteger(summary.end)
+            && summary.start >= 0
+            && summary.end >= summary.start
+            && summary.end < childCount
+        ))
+        .sort((a, b) => a.end - b.end || a.start - b.start);
+}
+
+function appendSummary(lines, summary, children, depth) {
+    if (lines.length > 0 && lines.at(-1) !== '') lines.push('');
+    const startTopic = getTopic(children[summary.start]);
+    const endTopic = getTopic(children[summary.end]);
+    const range = summary.start === summary.end
+        ? startTopic
+        : `${startTopic} ～ ${endTopic}`;
+    lines.push(`${'#'.repeat(Math.min(depth + 2, 6))} 摘要（${range}）`);
+
+    const labelLines = normalizeBlockLines(summary.label);
+    if (labelLines.length > 0) {
+        lines.push('');
+        lines.push(...labelLines);
+    }
+}
+
 function appendLeaf(lines, node) {
     lines.push(`- ${formatNode(node)}`);
     appendDetails(lines, node, '  ');
 }
 
-function appendHeading(lines, node, depth) {
+function appendHeading(lines, node, depth, summaries) {
     if (lines.length > 0 && lines.at(-1) !== '') lines.push('');
     lines.push(`${'#'.repeat(Math.min(depth + 1, 6))} ${formatNode(node)}`);
 
     const details = [];
     appendDetails(details, node, '');
     const children = Array.isArray(node.children) ? node.children : [];
+    const nodeSummaries = getValidSummaries(node, summaries);
     const leaves = children.filter(child => !hasChildren(child));
     const branches = children.filter(hasChildren);
 
     if (details.length > 0 || children.length > 0) lines.push('');
     lines.push(...details);
     if (details.length > 0 && children.length > 0) lines.push('');
+
+    if (nodeSummaries.length > 0) {
+        const summariesByEnd = new Map();
+        for (const summary of nodeSummaries) {
+            const group = summariesByEnd.get(summary.end) ?? [];
+            group.push(summary);
+            summariesByEnd.set(summary.end, group);
+        }
+        children.forEach((child, index) => {
+            appendHeading(lines, child, depth + 1, summaries);
+            for (const summary of summariesByEnd.get(index) ?? []) {
+                appendSummary(lines, summary, children, depth);
+            }
+        });
+        return;
+    }
+
     for (const leaf of leaves) appendLeaf(lines, leaf);
     if (leaves.length > 0 && branches.length > 0) lines.push('');
-    for (const branch of branches) appendHeading(lines, branch, depth + 1);
+    for (const branch of branches) appendHeading(lines, branch, depth + 1, summaries);
 }
 
 export function toAiMarkdown(data, sourceName = 'mindmap.mmf') {
@@ -123,7 +171,7 @@ export function toAiMarkdown(data, sourceName = 'mindmap.mmf') {
         `> VS Mind AI 上下文，由 \`${safeSourceName}\` 生成。源 MMF 由用户维护；AI 只读取本文，不修改源文件。`,
         '',
     ];
-    appendHeading(lines, data.nodeData, 0);
+    appendHeading(lines, data.nodeData, 0, Array.isArray(data.summaries) ? data.summaries : []);
     return `${lines.join('\n')}\n`;
 }
 
