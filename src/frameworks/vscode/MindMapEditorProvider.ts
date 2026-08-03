@@ -16,7 +16,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
         const imageRepository = new VSCodeImageRepository();
         const service = new MindMapService(imageRepository);
-        const exportService = new ExportService();
+        const exportService = new ExportService(context.workspaceState, vscode);
         const provider = new MindMapEditorProvider(context, service, exportService);
         const providerRegistration = vscode.window.registerCustomEditorProvider(MindMapEditorProvider.viewType, provider, {
             webviewOptions: { retainContextWhenHidden: true },
@@ -184,6 +184,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                                 defaultName,
                                 format,
                                 Buffer.from(e.dataBase64, 'base64'),
+                                document.uri,
                             );
                             return;
                         }
@@ -191,7 +192,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                             void vscode.window.showErrorMessage('导出内容无效。');
                             return;
                         }
-                        await this.exportService.saveExport(defaultName, format, e.text);
+                        await this.exportService.saveExport(defaultName, format, e.text, document.uri);
                     } catch (error) {
                         console.error('Export failed:', error);
                         void vscode.window.showErrorMessage('导出失败，请重试。');

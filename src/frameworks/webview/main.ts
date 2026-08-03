@@ -9,9 +9,8 @@ import { createMindElixirMarkdownParser } from './markdown';
 import { NodeInspector } from './NodeInspector';
 import { ExportToolbar } from './ExportToolbar';
 import { isNodeTextEditing, setupEditClipboard } from './editClipboard';
-import { runWithViewportPreserved } from './preserveViewport';
+import { setupUndoRedoViewportPreservation } from './preserveViewport';
 import { NodeNoteTooltip } from './NodeNoteTooltip';
-import { MindMapHistory, type MindMapHistorySnapshot } from './history';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -47,6 +46,7 @@ interface MindElixirInstance {
     currentNodes?: HTMLElement[];
     undo?: () => void;
     redo?: () => void;
+    clearHistory?: () => void;
     selectNode(node: HTMLElement | NodeObj): void;
     reshapeNode(node: MindElixirInstance['currentNode'], patch: Partial<NodeObj>): void;
     findEle(id: string): MindElixirInstance['currentNode'];
@@ -226,6 +226,7 @@ export class ImageModal {
 export class MindMapApp {
     private state: any;
     private originalImageCache: { [id: string]: string } = {};
+    private readonly originalImagesByThumbnail = new Map<string, string>();
     private lastContent: string | null = null;
     private lastSelectedNode: HTMLElement | null = null;
     public mind: MindElixirInstance;
@@ -236,7 +237,6 @@ export class MindMapApp {
     private exportToolbar: ExportToolbar;
     private noteTooltip: NodeNoteTooltip;
     private documentBaseName = 'mindmap';
-    private readonly history = new MindMapHistory();
     private mindInitialized = false;
     private isApplyingState = false;
 
@@ -253,7 +253,7 @@ export class MindMapApp {
             contextMenu: true,
             toolBar: true,
             keypress: true,
-            allowUndo: false,
+            allowUndo: true,
             markdown: createMindElixirMarkdownParser() as Options['markdown'],
             pasteHandler: (event) => {
                 void this.handleImagePaste(event);
@@ -291,12 +291,12 @@ export class MindMapApp {
 
         this.setupImagePaste();
         setupEditClipboard(this.mind);
-        this.setupUndoRedo();
         this.initListeners();
         this.syncNodePanel();
     }
 
     private onMindInitialized() {
+        setupUndoRedoViewportPreservation(this.mind, () => this.saveChanges());
         this.themePanel.markMindReady();
         this.noteTooltip.syncNoteMarkers();
     }
@@ -310,6 +310,34 @@ export class MindMapApp {
         };
     }
 
+    private rememberOriginalImages(node: NodeObj, images: Record<string, string>): void {
+        const thumbnail = node.image?.url;
+        const original = images[node.id];
+        if (thumbnail && original) {
+            this.originalImagesByThumbnail.set(thumbnail, original);
+        }
+        node.children?.forEach(child => this.rememberOriginalImages(child, images));
+    }
+
+    private syncOriginalImagesToCanvas(): void {
+        const images: Record<string, string> = {};
+        const visit = (node: NodeObj): void => {
+            const thumbnail = node.image?.url;
+            if (thumbnail) {
+                const original = this.originalImagesByThumbnail.get(thumbnail)
+                    ?? this.originalImageCache[node.id];
+                if (original) {
+                    images[node.id] = original;
+                    this.originalImagesByThumbnail.set(thumbnail, original);
+                }
+            }
+            node.children?.forEach(visit);
+        };
+
+        visit(this.mind.getData().nodeData);
+        this.originalImageCache = images;
+    }
+
     private syncNodePanel() {
         const current = this.mind.currentNode;
         if (current?.nodeObj) {
@@ -317,13 +345,6 @@ export class MindMapApp {
             return;
         }
         this.inspector.hide(!this.isApplyingState);
-    }
-
-    private captureSnapshot(): MindMapHistorySnapshot {
-        return {
-            text: JSON.stringify(this.buildExportPayload(), null, 2),
-            images: { ...this.originalImageCache },
-        };
     }
 
     private restoreSelection(nodeId: string | null): void {
@@ -361,78 +382,13 @@ export class MindMapApp {
                 this.mindInitialized = true;
                 this.onMindInitialized();
             }
+            this.mind.clearHistory?.();
             this.themePanel.loadFromDocument(doc);
             this.restoreSelection(selectedNodeId);
         } finally {
             this.isApplyingState = false;
         }
         this.noteTooltip.syncNoteMarkers();
-    }
-
-    private postSnapshot(snapshot: MindMapHistorySnapshot): void {
-        this.lastContent = snapshot.text;
-        this.vscode.postMessage({
-            type: 'change',
-            text: snapshot.text,
-            images: { ...snapshot.images },
-        });
-        this.noteTooltip.syncNoteMarkers();
-    }
-
-    private applyHistorySnapshot(snapshot: MindMapHistorySnapshot): void {
-        let json: MindElixirData & Partial<ThemeDocumentSettings>;
-        try {
-            json = JSON.parse(snapshot.text) as MindElixirData & Partial<ThemeDocumentSettings>;
-        } catch {
-            return;
-        }
-
-        const selectedNodeId = this.mind.currentNode?.nodeObj?.id ?? null;
-        this.originalImageCache = { ...snapshot.images };
-        this.renderDocument(prepareMindData(json), selectedNodeId);
-        this.postSnapshot(snapshot);
-    }
-
-    private undo(): void {
-        const snapshot = this.history.undo();
-        if (snapshot) {
-            runWithViewportPreserved(this.mind, () => this.applyHistorySnapshot(snapshot));
-        }
-    }
-
-    private redo(): void {
-        const snapshot = this.history.redo();
-        if (snapshot) {
-            runWithViewportPreserved(this.mind, () => this.applyHistorySnapshot(snapshot));
-        }
-    }
-
-    private setupUndoRedo(): void {
-        this.mind.container.addEventListener('keydown', (event) => {
-            if (!(event.ctrlKey || event.metaKey) || event.altKey) {
-                return;
-            }
-
-            const key = event.key.toLowerCase();
-            const isUndo = key === 'z' && !event.shiftKey;
-            const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
-            if (!isUndo && !isRedo) {
-                return;
-            }
-
-            const target = event.target as HTMLElement | null;
-            if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) {
-                return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-            if (isRedo) {
-                this.redo();
-            } else {
-                this.undo();
-            }
-        });
     }
 
     private setupImagePaste(): void {
@@ -496,10 +452,10 @@ export class MindMapApp {
                 try {
                     const doc = prepareMindData(json as MindElixirData & Partial<ThemeDocumentSettings>);
                     this.originalImageCache = incomingImages;
+                    this.rememberOriginalImages(doc.nodeData, incomingImages);
                     this.renderDocument(doc, selectedNodeId);
-                    const normalizedSnapshot = this.captureSnapshot();
+                    this.syncOriginalImagesToCanvas();
                     this.lastContent = text;
-                    this.history.reset(normalizedSnapshot);
 
                     if (message.images && Object.keys(message.images).length > 0) {
                         setTimeout(() => {
@@ -532,6 +488,7 @@ export class MindMapApp {
                 const result = await ImageProcessor.resizeImage(base64, 200, 200);
 
                 this.originalImageCache[nodeId] = base64;
+                this.originalImagesByThumbnail.set(result.base64, base64);
 
                 this.mind.reshapeNode(targetNode, {
                     image: {
@@ -590,11 +547,6 @@ export class MindMapApp {
 
     handleOperation(operation: any) {
         console.log('[MindElixir Operation]', operation);
-        if (operation.name === 'removeNodes') {
-            (operation.objs as any[]).forEach((obj: any) => {
-                delete this.originalImageCache[obj.id];
-            });
-        }
         this.saveChanges();
     }
 
@@ -602,12 +554,15 @@ export class MindMapApp {
         if (this.isApplyingState) {
             return;
         }
-        const snapshot = this.captureSnapshot();
-        if (!this.history.record(snapshot)) {
-            this.noteTooltip.syncNoteMarkers();
-            return;
-        }
-        this.postSnapshot(snapshot);
+        this.syncOriginalImagesToCanvas();
+        const text = JSON.stringify(this.buildExportPayload(), null, 2);
+        this.lastContent = text;
+        this.vscode.postMessage({
+            type: 'change',
+            text,
+            images: { ...this.originalImageCache },
+        });
+        this.noteTooltip.syncNoteMarkers();
     }
 }
 

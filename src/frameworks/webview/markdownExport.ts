@@ -1,6 +1,12 @@
 import type { MindElixirData, NodeObj, TagObj } from 'mind-elixir';
 
 type NodeWithAiNote = NodeObj & { ai_note?: string };
+type MindMapSummary = {
+    label: string;
+    parent: string;
+    start: number;
+    end: number;
+};
 
 function decodeHtmlEntities(text: string): string {
     const namedEntities: Record<string, string> = {
@@ -108,6 +114,45 @@ function hasChildren(node: NodeObj): boolean {
     return (node.children?.length ?? 0) > 0;
 }
 
+function getValidSummaries(node: NodeObj, summaries: MindMapSummary[]): MindMapSummary[] {
+    const childCount = node.children?.length ?? 0;
+    return summaries
+        .filter((summary) => (
+            summary.parent === node.id
+            && Number.isInteger(summary.start)
+            && Number.isInteger(summary.end)
+            && summary.start >= 0
+            && summary.end >= summary.start
+            && summary.end < childCount
+        ))
+        .sort((a, b) => a.end - b.end || a.start - b.start);
+}
+
+function appendSummaryHeading(
+    lines: string[],
+    summary: MindMapSummary,
+    children: NodeObj[],
+    depth: number,
+): void {
+    if (lines.length > 0 && lines[lines.length - 1] !== '') {
+        lines.push('');
+    }
+
+    const startTopic = getNodeTopic(children[summary.start]);
+    const endTopic = getNodeTopic(children[summary.end]);
+    const range = summary.start === summary.end
+        ? startTopic
+        : `${startTopic} ～ ${endTopic}`;
+    const headingLevel = Math.min(depth + 2, 6);
+    lines.push(`${'#'.repeat(headingLevel)} 摘要（${range}）`);
+
+    const labelLines = normalizeBlockLines(summary.label);
+    if (labelLines.length > 0) {
+        lines.push('');
+        lines.push(...labelLines);
+    }
+}
+
 function appendLeafList(lines: string[], leaves: NodeObj[]): void {
     for (const leaf of leaves) {
         lines.push(`- ${formatNodeContent(leaf)}`);
@@ -115,7 +160,12 @@ function appendLeafList(lines: string[], leaves: NodeObj[]): void {
     }
 }
 
-function appendHeadingNode(lines: string[], node: NodeObj, depth: number): void {
+function appendHeadingNode(
+    lines: string[],
+    node: NodeObj,
+    depth: number,
+    summaries: MindMapSummary[],
+): void {
     if (lines.length > 0 && lines[lines.length - 1] !== '') {
         lines.push('');
     }
@@ -125,15 +175,33 @@ function appendHeadingNode(lines: string[], node: NodeObj, depth: number): void 
 
     const detailLines = getNodeDetailLines(node, '');
     const children = node.children ?? [];
+    const nodeSummaries = getValidSummaries(node, summaries);
     const leafChildren = children.filter((child) => !hasChildren(child));
     const headingChildren = children.filter(hasChildren);
 
-    if (detailLines.length > 0 || leafChildren.length > 0 || headingChildren.length > 0) {
+    if (detailLines.length > 0 || children.length > 0) {
         lines.push('');
     }
     lines.push(...detailLines);
-    if (detailLines.length > 0 && (leafChildren.length > 0 || headingChildren.length > 0)) {
+    if (detailLines.length > 0 && children.length > 0) {
         lines.push('');
+    }
+
+    if (nodeSummaries.length > 0) {
+        const summariesByEnd = new Map<number, MindMapSummary[]>();
+        for (const summary of nodeSummaries) {
+            const group = summariesByEnd.get(summary.end) ?? [];
+            group.push(summary);
+            summariesByEnd.set(summary.end, group);
+        }
+
+        children.forEach((child, index) => {
+            appendHeadingNode(lines, child, depth + 1, summaries);
+            for (const summary of summariesByEnd.get(index) ?? []) {
+                appendSummaryHeading(lines, summary, children, depth);
+            }
+        });
+        return;
     }
 
     appendLeafList(lines, leafChildren);
@@ -142,7 +210,7 @@ function appendHeadingNode(lines: string[], node: NodeObj, depth: number): void 
     }
 
     for (const child of headingChildren) {
-        appendHeadingNode(lines, child, depth + 1);
+        appendHeadingNode(lines, child, depth + 1, summaries);
     }
 }
 
@@ -153,6 +221,6 @@ export function toExportMarkdown(data: MindElixirData): string {
     }
 
     const lines: string[] = [];
-    appendHeadingNode(lines, root, 0);
+    appendHeadingNode(lines, root, 0, data.summaries ?? []);
     return `${lines.join('\n')}\n`;
 }

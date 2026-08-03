@@ -193,6 +193,54 @@
       }));
       log('side panel starts expanded', !document.getElementById('side-panel').classList.contains('hidden'));
 
+      const mapContainer = document.querySelector('.map-container');
+      const topicCountBeforeHistoryTest = document.querySelectorAll('me-tpc').length;
+      mapContainer?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Tab',
+        bubbles: true,
+        cancelable: true,
+      }));
+      await new Promise((r) => setTimeout(r, 50));
+      const inlineEditor = document.getElementById('input-box');
+      inlineEditor?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      }));
+      inlineEditor?.blur();
+      await new Promise((r) => setTimeout(r, 50));
+      log('native history records canvas operation',
+        document.querySelectorAll('me-tpc').length === topicCountBeforeHistoryTest + 1);
+
+      mapContainer?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'z',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+      await new Promise((r) => setTimeout(r, 100));
+      const undoMessage = window.__TEST__.lastMessage;
+      log('Cmd/Ctrl+Z uses native canvas undo and persists it',
+        document.querySelectorAll('me-tpc').length === topicCountBeforeHistoryTest
+        && undoMessage?.type === 'change'
+        && JSON.parse(undoMessage.text).nodeData.children[0].children.length === 1);
+
+      mapContainer?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Z',
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+      await new Promise((r) => setTimeout(r, 100));
+      const redoMessage = window.__TEST__.lastMessage;
+      log('Cmd/Ctrl+Shift+Z uses native canvas redo and persists it',
+        document.querySelectorAll('me-tpc').length === topicCountBeforeHistoryTest + 1
+        && redoMessage?.type === 'change'
+        && JSON.parse(redoMessage.text).nodeData.children[0].children.length === 2);
+      notedTopic?.click();
+      await new Promise((r) => setTimeout(r, 50));
+
       const aiNoteInput = document.getElementById('inspector-ai-note');
       log('AI note field present', !!aiNoteInput);
       aiNoteInput.value = 'Only consider offline deployment.';

@@ -2,7 +2,6 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
 import { getClipboardImageFile, ImageProcessor, ImageModal, MindMapApp } from '../../frameworks/webview/main';
-import { MindMapHistory } from '../../frameworks/webview/history';
 
 // --- DOM Mocks ---
 // We need to set up the global environment before importing/using the classes if they rely on globals at module level.
@@ -141,36 +140,6 @@ const themeDomIds = [
 
 describe('Webview Refactoring Tests (TypeScript)', () => {
 
-    describe('MindMapHistory', () => {
-        it('should undo and redo complete document and image snapshots one step at a time', () => {
-            const history = new MindMapHistory();
-            history.reset({ text: 'initial', images: { root: 'old-image' } });
-            history.record({ text: 'ai-note', images: { root: 'old-image' } });
-            history.record({ text: 'renamed', images: { root: 'new-image' } });
-
-            assert.deepStrictEqual(history.undo(), {
-                text: 'ai-note',
-                images: { root: 'old-image' },
-            });
-            assert.deepStrictEqual(history.undo(), {
-                text: 'initial',
-                images: { root: 'old-image' },
-            });
-            assert.deepStrictEqual(history.redo(), {
-                text: 'ai-note',
-                images: { root: 'old-image' },
-            });
-        });
-
-        it('should ignore duplicate snapshots', () => {
-            const history = new MindMapHistory();
-            history.reset({ text: 'same', images: {} });
-
-            assert.strictEqual(history.record({ text: 'same', images: {} }), false);
-            assert.strictEqual(history.undo(), null);
-        });
-    });
-
     describe('ImageProcessor', () => {
         it('should resize image using mock canvas', async () => {
             const mockCanvas = {
@@ -244,7 +213,13 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 theme: {},
                 generateMainBranch: null,
                 generateSubBranch: null,
-                getData: sinon.stub().returns({ data: 'test' }),
+                getData: sinon.stub().returns({
+                    nodeData: { id: 'root', topic: 'Root', children: [] },
+                    arrows: [],
+                }),
+                undo: sinon.spy(),
+                redo: sinon.spy(),
+                clearHistory: sinon.spy(),
                 currentNode: null,
                 reshapeNode: sinon.spy(),
                 selectNode: sinon.spy(),
@@ -275,7 +250,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
 
         it('should initialize MindElixir', () => {
             assert.ok(mindElixirMock.called);
-            assert.strictEqual(mindElixirMock.firstCall.args[0].allowUndo, false);
+            assert.strictEqual(mindElixirMock.firstCall.args[0].allowUndo, true);
             assert.ok((app.mind.bus.addListener as any).calledWith('operation', sinon.match.func));
         });
 
@@ -339,84 +314,62 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             assert.ok((app.mind.refresh as sinon.SinonSpy).calledWith(sinon.match({
                 nodeData: sinon.match({ topic: 'two' }),
             })));
+            assert.ok((app.mind.clearHistory as sinon.SinonSpy).calledTwice);
         });
 
-        it('should undo AI notes and later node edits independently', () => {
-            let data: any;
-            (app.mind.init as sinon.SinonStub).callsFake((doc: any) => {
-                data = JSON.parse(JSON.stringify(doc));
-            });
-            (app.mind.refresh as sinon.SinonStub).callsFake((doc?: any) => {
-                if (doc) data = JSON.parse(JSON.stringify(doc));
-            });
-            (app.mind.getData as sinon.SinonStub).callsFake(() => JSON.parse(JSON.stringify(data)));
-
+        it('should wrap MindElixir native undo and redo after initialization', () => {
+            const nativeUndo = app.mind.undo as sinon.SinonSpy;
+            const nativeRedo = app.mind.redo as sinon.SinonSpy;
             (app as any).handleVscodeMessage({
                 type: 'update',
                 text: JSON.stringify({ nodeData: { id: 'root', topic: 'original', children: [] } }),
                 images: {},
             });
-            data.nodeData.ai_note = 'only for AI';
-            app.saveChanges();
-            data.nodeData.topic = 'renamed';
-            app.saveChanges();
 
-            const echoedChange = vscodeMock.postMessage.lastCall.args[0];
-            (app as any).handleVscodeMessage({
-                type: 'update',
-                text: echoedChange.text,
-                images: echoedChange.images,
-            });
+            assert.notStrictEqual(app.mind.undo, nativeUndo);
+            assert.notStrictEqual(app.mind.redo, nativeRedo);
+            app.mind.undo?.();
+            app.mind.redo?.();
 
-            const keydown = (app.mind.container.addEventListener as sinon.SinonSpy)
-                .getCalls()
-                .find(call => call.args[0] === 'keydown')?.args[1];
-            assert.ok(keydown, 'application undo listener should be registered');
-
-            keydown({
-                key: 'z', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false,
-                target: { closest: () => null }, preventDefault: sinon.spy(), stopPropagation: sinon.spy(),
-            });
-            assert.strictEqual(data.nodeData.topic, 'original');
-            assert.strictEqual(data.nodeData.ai_note, 'only for AI');
-
-            keydown({
-                key: 'z', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false,
-                target: { closest: () => null }, preventDefault: sinon.spy(), stopPropagation: sinon.spy(),
-            });
-            assert.strictEqual(data.nodeData.ai_note, undefined);
-
-            keydown({
-                key: 'z', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true,
-                target: { closest: () => null }, preventDefault: sinon.spy(), stopPropagation: sinon.spy(),
-            });
-            assert.strictEqual(data.nodeData.ai_note, 'only for AI');
-            assert.strictEqual(data.nodeData.topic, 'original');
+            assert.ok(nativeUndo.calledOnce);
+            assert.ok(nativeRedo.calledOnce);
         });
 
-        it('should restore the original image cache on undo', () => {
-            let data: any;
+        it('should restore the matching original image after native history changes the canvas', () => {
+            let data: any = {
+                nodeData: {
+                    id: 'root',
+                    topic: 'Image',
+                    image: { url: 'thumbnail-old', width: 10, height: 10 },
+                    children: [],
+                },
+                arrows: [],
+            };
             (app.mind.init as sinon.SinonStub).callsFake((doc: any) => {
                 data = JSON.parse(JSON.stringify(doc));
-            });
-            (app.mind.refresh as sinon.SinonStub).callsFake((doc?: any) => {
-                if (doc) data = JSON.parse(JSON.stringify(doc));
             });
             (app.mind.getData as sinon.SinonStub).callsFake(() => JSON.parse(JSON.stringify(data)));
 
             (app as any).handleVscodeMessage({
                 type: 'update',
-                text: JSON.stringify({ nodeData: { id: 'root', topic: 'image', children: [] } }),
-                images: { root: 'old-image' },
+                text: JSON.stringify(data),
+                images: { root: 'original-old' },
             });
-            (app as any).originalImageCache.root = 'new-image';
-            data.nodeData.image = { url: 'thumbnail', width: 10, height: 10 };
+
+            data.nodeData = { id: 'root', topic: 'Image removed', children: [] };
+            app.handleOperation({ name: 'removeNodes' });
+            assert.deepStrictEqual(vscodeMock.postMessage.lastCall.args[0].images, {});
+
+            data.nodeData = {
+                id: 'root',
+                topic: 'Image',
+                image: { url: 'thumbnail-old', width: 10, height: 10 },
+                children: [],
+            };
             app.saveChanges();
-
-            (app as any).undo();
-
-            assert.deepStrictEqual((app as any).originalImageCache, { root: 'old-image' });
-            assert.strictEqual(data.nodeData.image, undefined);
+            assert.deepStrictEqual(vscodeMock.postMessage.lastCall.args[0].images, {
+                root: 'original-old',
+            });
         });
 
         it('should paste an image into the selected node from the document', async () => {
