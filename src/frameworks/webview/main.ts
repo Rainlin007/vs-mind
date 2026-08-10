@@ -296,7 +296,10 @@ export class MindMapApp {
     }
 
     private onMindInitialized() {
-        setupUndoRedoViewportPreservation(this.mind, () => this.saveChanges());
+        setupUndoRedoViewportPreservation(this.mind, () => {
+            this.themePanel.reapplyLineStyle();
+            this.saveChanges();
+        });
         this.themePanel.markMindReady();
         this.noteTooltip.syncNoteMarkers();
     }

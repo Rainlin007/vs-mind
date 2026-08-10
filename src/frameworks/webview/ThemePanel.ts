@@ -86,6 +86,15 @@ export class ThemePanel {
         return { ...this.settings };
     }
 
+    /**
+     * MindElixir restores the theme while rebuilding an undo/redo snapshot,
+     * which also replaces our custom branch generators with the theme defaults.
+     * Reapply the selected line style after native history navigation.
+     */
+    reapplyLineStyle(): void {
+        this.applyLineStyleOnly();
+    }
+
     loadFromDocument(data: Partial<ThemeDocumentSettings> | undefined): void {
         this.syncSettingsToUi({
             themeTemplate: data?.themeTemplate || DEFAULT_THEME_ID,

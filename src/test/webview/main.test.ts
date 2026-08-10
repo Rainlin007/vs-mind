@@ -348,6 +348,28 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             assert.ok(nativeRedo.calledOnce);
         });
 
+        it('should reapply the selected line style after native undo resets its generators', () => {
+            (app as any).handleVscodeMessage({
+                type: 'update',
+                text: JSON.stringify({
+                    nodeData: { id: 'root', topic: 'original', children: [] },
+                    lineStyle: 'straight',
+                }),
+                images: {},
+            });
+            const selectedLineGenerator = app.mind.generateMainBranch;
+            const linkCallsBeforeUndo = (app.mind.linkDiv as sinon.SinonSpy).callCount;
+
+            // Native history refreshes the snapshot theme, replacing the custom
+            // branch generators before our post-undo callback runs.
+            app.mind.generateMainBranch = null;
+            app.mind.generateSubBranch = null;
+            app.mind.undo?.();
+
+            assert.strictEqual(app.mind.generateMainBranch, selectedLineGenerator);
+            assert.ok((app.mind.linkDiv as sinon.SinonSpy).callCount > linkCallsBeforeUndo);
+        });
+
         it('should restore the matching original image after native history changes the canvas', () => {
             let data: any = {
                 nodeData: {
