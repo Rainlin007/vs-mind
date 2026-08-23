@@ -17,7 +17,7 @@
     "color": "#1e1e1e",
     "theme": "dark"
   },
-  "version": "2.1.2",
+  "version": "2.1.3",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -41,6 +41,17 @@
   ],
   "main": "./out/frameworks/vscode/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "VS Mind",
+      "properties": {
+        "vscode-mm.autoSave": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Automatically save mind map files every 5 seconds after changes."
+        }
+      }
+    },
     "commands": [
       {
         "command": "vscode-mm.toggleSidePanel",

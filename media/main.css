@@ -290,6 +290,37 @@ body {
     margin-bottom: 4px;
 }
 
+.panel-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.panel-toggle-title,
+.panel-toggle-description {
+    display: block;
+}
+
+.panel-toggle-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground);
+}
+
+.panel-toggle-description {
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--vscode-descriptionForeground);
+}
+
+.panel-toggle input[type="checkbox"] {
+    flex: 0 0 auto;
+    accent-color: var(--vscode-focusBorder);
+}
+
 .panel-select {
     width: 100%;
     padding: 4px 6px;

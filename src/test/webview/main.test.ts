@@ -116,6 +116,7 @@ const themeDomIds = [
     'bg-pattern-opacity',
     'bg-pattern-opacity-value',
     'bgPatternOverlay',
+    'auto-save-enabled',
 ];
 
 (global as any).document.getElementById = sinon.stub().callsFake((id: string) => {
@@ -281,6 +282,16 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             assert.strictEqual(initArg.lineStyle, 'curve');
             assert.ok(initArg.theme);
             assert.ok((app.mind.init as any).calledOnce);
+        });
+
+        it('should synchronize the global auto-save setting', () => {
+            const checkbox = (app as any).autoSaveCheckbox;
+
+            (app as any).handleVscodeMessage({ type: 'autoSaveSetting', enabled: false });
+            assert.strictEqual(checkbox.checked, false);
+
+            (app as any).handleVscodeMessage({ type: 'autoSaveSetting', enabled: true });
+            assert.strictEqual(checkbox.checked, true);
         });
 
         it('should restore previous selection on update', () => {

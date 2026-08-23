@@ -109,6 +109,15 @@
             <input id="bg-pattern-opacity" class="style-opacity" type="range" min="5" max="100" step="5" value="5" />
             <span id="bg-pattern-opacity-value" class="style-opacity-value">5%</span>
           </div>
+          <div class="panel-section">
+            <label class="panel-toggle" for="auto-save-enabled">
+              <span>
+                <span class="panel-toggle-title">自动保存</span>
+                <span class="panel-toggle-description">每 5 秒保存未写入的修改</span>
+              </span>
+              <input id="auto-save-enabled" type="checkbox" checked />
+            </label>
+          </div>
         </div>
       </div>
     </aside>
@@ -170,7 +179,7 @@
       log('MindElixir loaded: ' + !!window.MindElixir, !!window.MindElixir);
 
       await new Promise((r) => setTimeout(r, 100));
-      window.postMessage({ type: 'update', text: JSON.stringify(defaultDoc), images: {} }, '*');
+      window.postMessage({ type: 'update', text: JSON.stringify(defaultDoc), images: {}, autoSaveEnabled: true }, '*');
       await new Promise((r) => setTimeout(r, 300));
 
       log('mind map rendered', !!document.querySelector('me-tpc'));
@@ -305,6 +314,14 @@
       await new Promise((r) => setTimeout(r, 50));
       log('global tab label', document.getElementById('panel-tab-theme').textContent.trim() === '全局');
       log('theme tab active', document.getElementById('panel-page-theme').classList.contains('active'));
+
+      const autoSaveCheckbox = document.getElementById('auto-save-enabled');
+      log('auto-save enabled by default', autoSaveCheckbox.checked === true);
+      autoSaveCheckbox.click();
+      await new Promise((r) => setTimeout(r, 50));
+      log('auto-save toggle updates global setting',
+        window.__TEST__.lastMessage?.type === 'setAutoSave'
+        && window.__TEST__.lastMessage?.enabled === false);
 
       const select = document.getElementById('theme-select');
       select.value = 'auroraDark';

@@ -234,6 +234,7 @@ export class MindMapApp {
     private inspector: NodeInspector;
     private themePanel: ThemePanel;
     private sidePanel: SidePanel;
+    private autoSaveCheckbox: HTMLInputElement | null;
     private exportToolbar: ExportToolbar;
     private noteTooltip: NodeNoteTooltip;
     private documentBaseName = 'mindmap';
@@ -263,6 +264,13 @@ export class MindMapApp {
         this.imageModal = new ImageModal(this.lastSelectedNode, this.mind);
         this.inspector = new NodeInspector(this.mind, () => this.saveChanges());
         this.themePanel = new ThemePanel(this.mind, () => this.saveChanges());
+        this.autoSaveCheckbox = document.getElementById('auto-save-enabled') as HTMLInputElement | null;
+        this.autoSaveCheckbox?.addEventListener('change', () => {
+            this.vscode.postMessage({
+                type: 'setAutoSave',
+                enabled: this.autoSaveCheckbox?.checked === true,
+            });
+        });
         const sidePanelWidth = typeof this.state.sidePanelWidth === 'number'
             ? this.state.sidePanelWidth
             : DEFAULT_SIDE_PANEL_WIDTH;
@@ -433,6 +441,7 @@ export class MindMapApp {
                 this.sidePanel.toggle();
                 break;
             case 'update': {
+                this.syncAutoSaveSetting(message.autoSaveEnabled);
                 const text = message.text;
                 if (typeof message.documentBaseName === 'string' && message.documentBaseName) {
                     this.documentBaseName = message.documentBaseName;
@@ -470,6 +479,15 @@ export class MindMapApp {
                 }
                 break;
             }
+            case 'autoSaveSetting':
+                this.syncAutoSaveSetting(message.enabled);
+                break;
+        }
+    }
+
+    private syncAutoSaveSetting(enabled: unknown): void {
+        if (this.autoSaveCheckbox && typeof enabled === 'boolean') {
+            this.autoSaveCheckbox.checked = enabled;
         }
     }
 

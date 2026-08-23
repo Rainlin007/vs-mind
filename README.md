@@ -52,7 +52,7 @@ Press **F5** in VS Code to launch the Extension Development Host, then open or c
 4. In the **Node** tab, select a node to edit its style, note, and optional AI note.
 5. In the **Global** tab, change color scheme, layout direction, line style, and background pattern.
 6. Drag the **left edge** of the property panel to resize it.
-7. Changes are saved automatically to the file every 5 seconds.
+7. Changes are saved automatically to the file every 5 seconds. You can disable this in the **Global** tab or with the `vscode-mm.autoSave` setting.
 
 ### Read-only AI workflow
 
@@ -201,7 +201,7 @@ npm run compile
 4. 在 **节点** Tab 中选中节点，可编辑样式、注释和可选的 AI 备注。
 5. 在 **全局** Tab 中可切换配色、布局方向、线条样式和背景花纹。
 6. 拖动属性面板**左边缘**可调整面板宽度。
-7. 修改会每 5 秒自动保存到文件。
+7. 修改会每 5 秒自动保存到文件。可在 **全局** Tab 中关闭，或修改全局设置 `vscode-mm.autoSave`。
 
 ### AI 只读工作流
 
