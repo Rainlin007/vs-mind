@@ -341,6 +341,66 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             assert.ok((app.mind.clearHistory as sinon.SinonSpy).calledTwice);
         });
 
+        it('should not refresh for the same document with different JSON formatting', () => {
+            const data = {
+                nodeData: { id: 'root', topic: 'editing', children: [] },
+                arrows: [],
+            };
+            (app as any).handleVscodeMessage({
+                type: 'update',
+                text: JSON.stringify(data),
+                images: {},
+            });
+            (app.mind.refresh as sinon.SinonSpy).resetHistory();
+
+            (app as any).handleVscodeMessage({
+                type: 'update',
+                text: JSON.stringify(data, null, 4).replace(/\n/g, '\r\n'),
+                images: {},
+            });
+
+            assert.ok((app.mind.refresh as sinon.SinonSpy).notCalled);
+        });
+
+        it('should save arrow control-point changes after dragging settles', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                (app.mind.getData as sinon.SinonStub).returns({
+                    nodeData: { id: 'root', topic: 'Root', children: [] },
+                    arrows: [{
+                        id: 'arrow-1',
+                        from: 'root',
+                        to: 'child',
+                        label: '',
+                        delta1: { x: 24, y: -12 },
+                        delta2: { x: -18, y: 30 },
+                    }],
+                });
+                const arrowDeltaListener = (app.mind.bus.addListener as sinon.SinonSpy)
+                    .getCalls()
+                    .find(call => call.args[0] === 'updateArrowDelta')?.args[1];
+                assert.ok(arrowDeltaListener, 'updateArrowDelta listener should be registered');
+
+                arrowDeltaListener();
+                clock.tick(100);
+                arrowDeltaListener();
+                clock.tick(199);
+                assert.ok(vscodeMock.postMessage.neverCalledWith(sinon.match({ type: 'change' })));
+
+                clock.tick(1);
+                const changeMessages = vscodeMock.postMessage.getCalls()
+                    .map((call: sinon.SinonSpyCall) => call.args[0])
+                    .filter((message: any) => message.type === 'change');
+                assert.strictEqual(changeMessages.length, 1);
+                assert.deepStrictEqual(JSON.parse(changeMessages[0].text).arrows[0].delta1, {
+                    x: 24,
+                    y: -12,
+                });
+            } finally {
+                clock.restore();
+            }
+        });
+
         it('should wrap MindElixir native undo and redo after initialization', () => {
             const nativeUndo = app.mind.undo as sinon.SinonSpy;
             const nativeRedo = app.mind.redo as sinon.SinonSpy;

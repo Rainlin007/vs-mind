@@ -105,6 +105,20 @@ function imageMapsEqual(a: Record<string, string>, b: Record<string, string>): b
     return aKeys.length === bKeys.length && aKeys.every(key => a[key] === b[key]);
 }
 
+function documentContentsEqual(a: string, b: string | null): boolean {
+    if (b === null) {
+        return false;
+    }
+    if (a === b) {
+        return true;
+    }
+    try {
+        return JSON.stringify(JSON.parse(a)) === JSON.stringify(JSON.parse(b));
+    } catch {
+        return false;
+    }
+}
+
 function resolveMindElixirCtor(): MindElixirCtor {
     const mod = window.MindElixir;
     const Ctor = (mod.default ?? mod) as MindElixirCtor;
@@ -224,6 +238,7 @@ export class ImageModal {
  * Main application class
  */
 export class MindMapApp {
+    private static readonly arrowSaveDelayMs = 200;
     private state: any;
     private originalImageCache: { [id: string]: string } = {};
     private readonly originalImagesByThumbnail = new Map<string, string>();
@@ -240,6 +255,7 @@ export class MindMapApp {
     private documentBaseName = 'mindmap';
     private mindInitialized = false;
     private isApplyingState = false;
+    private arrowSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(
         private readonly vscode: VSCodeApi,
@@ -424,6 +440,7 @@ export class MindMapApp {
         }
 
         this.mind.bus.addListener('operation', (operation: any) => this.handleOperation(operation));
+        this.mind.bus.addListener('updateArrowDelta', () => this.scheduleArrowChangesSave());
 
         this.mind.bus.addListener('selectNodes', () => {
             this.sidePanel.switchTab('node');
@@ -449,7 +466,11 @@ export class MindMapApp {
                 const incomingImages = message.images
                     ? { ...message.images }
                     : { ...this.originalImageCache };
-                if (text === this.lastContent && imageMapsEqual(incomingImages, this.originalImageCache)) {
+                if (typeof text !== 'string') {
+                    return;
+                }
+                if (documentContentsEqual(text, this.lastContent)
+                    && imageMapsEqual(incomingImages, this.originalImageCache)) {
                     return;
                 }
 
@@ -569,6 +590,16 @@ export class MindMapApp {
     handleOperation(operation: any) {
         console.log('[MindElixir Operation]', operation);
         this.saveChanges();
+    }
+
+    private scheduleArrowChangesSave(): void {
+        if (this.arrowSaveTimer !== null) {
+            clearTimeout(this.arrowSaveTimer);
+        }
+        this.arrowSaveTimer = setTimeout(() => {
+            this.arrowSaveTimer = null;
+            this.saveChanges();
+        }, MindMapApp.arrowSaveDelayMs);
     }
 
     saveChanges() {
