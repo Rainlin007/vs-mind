@@ -45,7 +45,7 @@ export function createMindElixirMarkdownParser(): (text: string, obj: MarkdownOb
                 return katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
             });
 
-            return html.trim().replace(/\n/g, '');
+            return html.trim();
         } catch {
             return text;
         }
