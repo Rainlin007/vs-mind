@@ -67,6 +67,81 @@ page.on('requestfailed', (req) => {
 await page.goto(url, { waitUntil: 'networkidle0', timeout: 15000 });
 await page.waitForFunction(() => window.__TEST__?.done === true, { timeout: 15000 });
 
+// Use real keyboard input: synthetic keydown events do not insert contenteditable line breaks.
+try {
+  const topicSelector = 'me-tpc[data-nodeid="mechild"]';
+  await page.$eval(topicSelector, async (node) => {
+    // MindElixir detects double clicks from pointerup events.
+    node.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse' }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    node.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse' }));
+  });
+  await page.waitForSelector('#input-box');
+  await page.focus('#input-box');
+  await page.keyboard.type('First line');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('Enter');
+  await page.keyboard.up('Shift');
+  await page.keyboard.type('Second line');
+  await page.evaluate(() => log('Shift+Enter keeps the node editor open', !!document.getElementById('input-box')));
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#input-box', { hidden: true });
+  await page.evaluate((selector) => {
+    const node = document.querySelector(selector);
+    const text = node.querySelector('.text');
+    log('Enter saves multiline node text', node.nodeObj.topic === 'First line\nSecond line');
+    log('saved node displays two lines', text.innerText === 'First line\nSecond line');
+  }, topicSelector);
+
+  await page.keyboard.press('F2');
+  await page.waitForSelector('#input-box');
+  await page.focus('#input-box');
+  await page.evaluate(() => {
+    const editor = document.getElementById('input-box');
+    log('reopened editor preserves visible line breaks',
+      editor.innerText === 'First line\nSecond line' && getComputedStyle(editor).whiteSpace === 'pre-wrap');
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    const clipboardData = new DataTransfer();
+    clipboardData.setData('text/plain', 'Pasted first\nPasted second');
+    editor.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }));
+  });
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#input-box', { hidden: true });
+  const exportedData = await page.evaluate((selector) => {
+    const node = document.querySelector(selector);
+    log('multiline paste is saved and rendered: ' + JSON.stringify(node.nodeObj.topic),
+      node.nodeObj.topic === 'Pasted first\nPasted second'
+      && node.querySelector('.text').innerText === 'Pasted first\nPasted second');
+    document.getElementById('export-trigger').click();
+    document.querySelector('[data-export="mmf"]').click();
+    const message = window.__TEST__.lastMessage;
+    const data = JSON.parse(message.text);
+    log('MMF export preserves node line breaks', data.nodeData.children[0].topic === 'Pasted first\nPasted second');
+    return data;
+  }, topicSelector);
+  const editingChecks = await page.evaluate(() => window.__TEST__.logs);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => window.__TEST__?.done === true);
+  await page.evaluate((data, checks) => {
+    window.__TEST__.logs = checks;
+    window.postMessage({ type: 'update', text: JSON.stringify(data), images: {} }, '*');
+  }, exportedData, editingChecks);
+  await page.waitForFunction((selector) => {
+    const node = document.querySelector(selector);
+    return node?.querySelector('.text')?.innerText === 'Pasted first\nPasted second';
+  }, { timeout: 5000 }, topicSelector);
+  await page.evaluate(() => log('reloaded document displays multiline nodes', true));
+} catch (error) {
+  await page.evaluate((message) => log('multiline editing: ' + message, false), error.message);
+}
+await page.evaluate(() => {
+  window.__TEST__.passed = window.__TEST__.passed && window.__TEST__.logs.every((entry) => entry.ok);
+});
+
 const result = await page.evaluate(() => window.__TEST__);
 const logs = result.logs.map((l) => `${l.ok ? '✓' : '✗'} ${l.msg}`).join('\n');
 

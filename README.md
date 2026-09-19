@@ -59,6 +59,7 @@ Press **F5** in VS Code to launch the Extension Development Host, then open or c
 - **Enter** — Add a sibling node
 - **Delete** — Remove selected node(s)
 - **Double-click** — Edit node text
+- **Shift + Enter** — Insert a line break while editing (Enter finishes editing)
 - **Ctrl/Cmd + V** — Paste an image into the selected node
 
 ## Development
@@ -197,6 +198,7 @@ npm run compile
 - **Enter** — 添加兄弟节点
 - **Delete** — 删除选中节点
 - **双击** — 编辑节点文字
+- **Shift + Enter** — 编辑时插入换行（Enter 完成编辑）
 - **Ctrl/Cmd + V** — 向选中节点粘贴图片
 
 ## 开发
