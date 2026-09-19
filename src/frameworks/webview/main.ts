@@ -49,7 +49,7 @@ interface MindElixirInstance {
     clearHistory?: () => void;
     selectNode(node: HTMLElement | NodeObj): void;
     reshapeNode(node: MindElixirInstance['currentNode'], patch: Partial<NodeObj>): void;
-    findEle(id: string): MindElixirInstance['currentNode'];
+    findEle(id: string): (HTMLElement & NonNullable<MindElixirInstance['currentNode']>) | null;
     exportPng: (noForeignObject?: boolean, injectCss?: string) => Promise<Blob | null>;
 }
 
@@ -60,8 +60,6 @@ interface MindElixirCtor {
     SIDE: number;
     E(id: string, el?: HTMLElement): HTMLElement | undefined;
 }
-
-declare const MindElixir: MindElixirCtor & { default?: MindElixirCtor };
 
 declare global {
     interface Window {
@@ -522,7 +520,7 @@ export class MindMapApp {
                 this.mind.refresh();
 
                 // Restore selection
-                const newNode = MindElixir.E(nodeId);
+                const newNode = this.mind.findEle(nodeId);
                 if (newNode) {
                     this.mind.selectNode(newNode);
                     if (this.mind.container) {

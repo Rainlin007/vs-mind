@@ -41,6 +41,8 @@ const url = `http://127.0.0.1:${port}/debug/webview.html`;
 
 const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
 const page = await browser.newPage();
+await page.setViewport({ width: 1440, height: 900 });
+await page.exposeFunction('selectTestTopic', (nodeId) => page.click(`me-tpc[data-nodeid="${nodeId}"]`));
 const consoleErrors = [];
 
 const failedResources = [];

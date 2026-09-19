@@ -16,3 +16,9 @@ example.mindmap
 package-lock.json
 package.json.bak
 node_modules/**
+.superpowers/**
+docs/**
+debug/**
+scripts/**
+eslint.config.mjs
+esbuild.js

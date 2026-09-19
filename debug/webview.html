@@ -175,6 +175,20 @@
     }
 
     async function runTests() {
+      async function selectTopic(topic) {
+        if (window.selectTestTopic) {
+          await window.selectTestTopic(topic.dataset.nodeid);
+          return;
+        }
+        // Standalone fallback: double tap selects and edits; Escape closes the editor.
+        topic.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse' }));
+        await new Promise((r) => setTimeout(r, 50));
+        topic.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse' }));
+        await new Promise((r) => setTimeout(r, 50));
+        document.getElementById('input-box')?.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'Escape', bubbles: true, cancelable: true,
+        }));
+      }
       document.getElementById('debug-bar').textContent = '';
       log('MindElixir loaded: ' + !!window.MindElixir, !!window.MindElixir);
 
@@ -186,7 +200,7 @@
       const notedTopic = Array.from(document.querySelectorAll('me-tpc'))
         .find((topic) => topic.nodeObj?.id === 'child');
       log('note marker rendered', notedTopic?.classList.contains('has-note') === true);
-      notedTopic?.click();
+      await selectTopic(notedTopic);
       await new Promise((r) => setTimeout(r, 50));
       log('note marker survives selection', notedTopic?.classList.contains('has-note') === true);
       log('note marker offset from node', notedTopic
@@ -247,7 +261,8 @@
         document.querySelectorAll('me-tpc').length === topicCountBeforeHistoryTest + 1
         && redoMessage?.type === 'change'
         && JSON.parse(redoMessage.text).nodeData.children[0].children.length === 2);
-      notedTopic?.click();
+      // Undo/redo rebuilds topic elements; select the current element with MindElixir's pointer event.
+      await selectTopic(document.querySelector('me-tpc[data-nodeid="mechild"]'));
       await new Promise((r) => setTimeout(r, 50));
 
       const aiNoteInput = document.getElementById('inspector-ai-note');

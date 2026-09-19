@@ -168,11 +168,17 @@ function blockMindElixirClipboard(event: Event): void {
     event.preventDefault();
 }
 
-function attachEditUndoRedo(inputBox: HTMLDivElement): void {
+function attachInputBoxEditing(inputBox: HTMLDivElement): void {
     if (inputBox.dataset.undoBound === 'true') {
         return;
     }
     inputBox.dataset.undoBound = 'true';
+
+    // MindElixir reads innerText after removing the editor, when block elements
+    // inserted by multiline paste no longer contribute their visible line breaks.
+    inputBox.addEventListener('blur', () => {
+        inputBox.textContent = inputBox.innerText;
+    }, true);
 
     inputBox.addEventListener('keydown', (event) => {
         if (!(event.ctrlKey || event.metaKey) || event.altKey) {
@@ -266,7 +272,7 @@ function watchInputBoxMount(container: HTMLElement): void {
         const inputBox = getInputBox();
         if (inputBox) {
             requestAnimationFrame(focusInputBox);
-            attachEditUndoRedo(inputBox);
+            attachInputBoxEditing(inputBox);
         }
     });
     observer.observe(container, { childList: true, subtree: true });
