@@ -11,12 +11,13 @@ A VS Code extension that provides a visual mind map editor. Edit `.mmf` files di
 ## Features
 
 - **Visual editing** — Create, edit, and rearrange mind map nodes with drag-and-drop
-- **Right-side property panel** — Two tabs: **Node** (font, color, bold/italic) and **Theme** (colors, layout, line style, background pattern)
+- **Right-side property panel** — Two tabs: **Node** (font, color, notes, AI notes) and **Global** (colors, layout, line style, background pattern)
 - **8 preset themes** — 4 light + 4 dark color schemes
 - **Layout & lines** — Left / right / bilateral layout; five curated styles: smooth curve, clean straight, rounded elbow, stepped polyline, and classic underline
 - **Background patterns** — None, dots, grid, or cross-dot with adjustable color and opacity
 - **Node images** — Paste images from clipboard; click to preview full size
 - **Export options** — Export to MMF, PNG, plaintext, or Markdown
+- **AI-readable context** — Markdown export includes node notes and AI notes; the bundled `mmf-format` skill converts MMF before an agent reads it
 - **Resizable panel** — Drag the left edge of the side panel to adjust width (180–520 px)
 - **Plain JSON storage** — Mind map data is saved as readable JSON; easy to version-control with Git
 
@@ -48,10 +49,18 @@ Press **F5** in VS Code to launch the Extension Development Host, then open or c
 1. Open a `.mmf` file — VS Code opens it with the mind map editor automatically.
 2. Use the **canvas toolbar** (right side of the map) for node operations: add child/sibling, delete, etc.
 3. Open the **property panel** via the sidebar icon in the editor title bar (top-right).
-4. In the **Node** tab, select a node to edit font size, color, bold, and italic.
-5. In the **Theme** tab, change color scheme, layout direction, line style, and background pattern.
+4. In the **Node** tab, select a node to edit its style, note, and optional AI note.
+5. In the **Global** tab, change color scheme, layout direction, line style, and background pattern.
 6. Drag the **left edge** of the property panel to resize it.
-7. Changes are saved automatically to the file.
+7. Changes are saved automatically to the file every 5 seconds. You can disable this in the **Global** tab or with the `vscode-mm.autoSave` setting.
+
+### Read-only AI workflow
+
+The bundled [`mmf-format` skill](skills/mmf-format/SKILL.md) requires agents to convert an MMF file with `scripts/mmf-to-markdown.mjs` and read only the generated Markdown. The source `.mmf` and companion image file remain user-owned and unchanged.
+
+```bash
+node skills/mmf-format/scripts/mmf-to-markdown.mjs plan.mmf --output context.md
+```
 
 ### Keyboard & Interaction
 
@@ -111,7 +120,7 @@ MMF documents store the raw MindElixir data structure as UTF-8 JSON. Example fie
 
 ```json
 {
-  "nodeData": { "id": "root", "topic": "Central Topic", "root": true, "children": [] },
+  "nodeData": { "id": "root", "topic": "Central Topic", "root": true, "ai_note": "AI-only note", "children": [] },
   "arrows": [],
   "themeTemplate": "clayLight",
   "backgroundPattern": "grid",
@@ -128,6 +137,8 @@ MMF documents store the raw MindElixir data structure as UTF-8 JSON. Example fie
 | `direction` | Layout: `0` left, `1` right, `2` bilateral |
 | `lineStyle` | `curve` \| `straight` \| `elbow` \| `step` \| `branch` |
 | `backgroundPattern` | `none` \| `dots` \| `grid` \| `crossDot` |
+
+Nodes may include an optional `ai_note` string. It is stored in the MMF file for AI consumers and is not rendered on the canvas.
 
 ## License
 
@@ -150,12 +161,13 @@ MMF documents store the raw MindElixir data structure as UTF-8 JSON. Example fie
 ## 功能特性
 
 - **可视化编辑** — 拖拽节点，增删改思维导图结构
-- **右侧属性面板** — 分 **节点**（字号、颜色、粗体/斜体）和 **主题**（配色、布局、线条、背景花纹）两个 Tab
+- **右侧属性面板** — 分 **节点**（字号、颜色、注释、AI 备注）和 **全局**（配色、布局、线条、背景花纹）两个 Tab
 - **8 套预设主题** — 4 款亮色 + 4 款暗色
 - **布局与线条** — 向左 / 向右 / 双侧布局；流畅曲线、简洁直线、圆角折线、阶梯折线、经典下划线
 - **背景花纹** — 无 / 点阵 / 网格 / 十字点，可调颜色与透明度
 - **节点图片** — 从剪贴板粘贴图片，点击可全屏预览
 - **导出选项** — 支持导出 MMF、PNG、纯文本或 Markdown
+- **AI 可读上下文** — Markdown 导出包含节点注释和 AI 备注；内置 `mmf-format` skill 会先转换 MMF，再交给 Agent 读取
 - **面板可调宽** — 拖动属性面板左边缘调整宽度（180–520 px）
 - **纯 JSON 存储** — 文件内容为可读 JSON，方便 Git 版本管理
 
@@ -187,10 +199,18 @@ npm run compile
 1. 打开 `.mmf` 文件，VS Code 会自动用思维导图编辑器打开。
 2. 使用画布**右侧工具栏**进行节点操作：添加子节点/兄弟节点、删除等。
 3. 点击编辑器标题栏右上角的**侧栏图标**打开/关闭属性面板。
-4. 在 **节点** Tab 中选中节点，可调整字号、颜色、粗体、斜体。
-5. 在 **主题** Tab 中可切换配色、布局方向、线条样式和背景花纹。
+4. 在 **节点** Tab 中选中节点，可编辑样式、注释和可选的 AI 备注。
+5. 在 **全局** Tab 中可切换配色、布局方向、线条样式和背景花纹。
 6. 拖动属性面板**左边缘**可调整面板宽度。
-7. 修改会自动保存到文件。
+7. 修改会每 5 秒自动保存到文件。可在 **全局** Tab 中关闭，或修改全局设置 `vscode-mm.autoSave`。
+
+### AI 只读工作流
+
+内置的 [`mmf-format` skill](skills/mmf-format/SKILL.md) 强制 Agent 先通过 `scripts/mmf-to-markdown.mjs` 将 MMF 转成 Markdown，然后只读取生成结果。源 `.mmf` 与图片伴生文件始终由用户维护，不会被 AI 修改。
+
+```bash
+node skills/mmf-format/scripts/mmf-to-markdown.mjs plan.mmf --output context.md
+```
 
 ### 快捷键与交互
 
@@ -250,7 +270,7 @@ MMF 文档直接以 UTF-8 JSON 保存 MindElixir 数据结构，示例：
 
 ```json
 {
-  "nodeData": { "id": "root", "topic": "中心主题", "root": true, "children": [] },
+  "nodeData": { "id": "root", "topic": "中心主题", "root": true, "ai_note": "仅供 AI 使用的备注", "children": [] },
   "arrows": [],
   "themeTemplate": "clayLight",
   "backgroundPattern": "grid",
@@ -267,6 +287,8 @@ MMF 文档直接以 UTF-8 JSON 保存 MindElixir 数据结构，示例：
 | `direction` | 布局：`0` 向左，`1` 向右，`2` 双侧 |
 | `lineStyle` | `curve` 流畅曲线 \| `straight` 简洁直线 \| `elbow` 圆角折线 \| `step` 阶梯折线 \| `branch` 经典下划线 |
 | `backgroundPattern` | `none` 无 \| `dots` 点阵 \| `grid` 网格 \| `crossDot` 十字点 |
+
+节点可包含可选的 `ai_note` 字符串，用于向 AI 提供备注，不会渲染在画布上。
 
 ### 预设主题一览
 

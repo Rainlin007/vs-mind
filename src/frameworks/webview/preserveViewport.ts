@@ -81,7 +81,7 @@ function restoreViewport(mind: ViewportPreservingMind, snapshot: ViewportSnapsho
     mind.map.style.transform = `translate3d(${x + dx}px, ${y + dy}px, 0) scale(${snapshot.scaleVal})`;
 }
 
-function runWithViewportPreserved(
+export function runWithViewportPreserved(
     mind: ViewportPreservingMind,
     action: () => void,
     onHistoryChange?: () => void,
@@ -99,6 +99,10 @@ function runWithViewportPreserved(
     });
 }
 
+/**
+ * Keep MindElixir as the sole owner of the history stack while preserving the
+ * viewport and notifying the host after a native undo/redo has completed.
+ */
 export function setupUndoRedoViewportPreservation(
     mind: ViewportPreservingMind,
     onHistoryChange?: () => void,

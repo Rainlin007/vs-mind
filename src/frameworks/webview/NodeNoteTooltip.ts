@@ -4,6 +4,7 @@ type TopicElement = HTMLElement & { nodeObj?: { note?: string } };
 
 export class NodeNoteTooltip {
     private readonly tooltip: HTMLDivElement;
+    private readonly markerObserver: MutationObserver;
     private activeTopic: TopicElement | null = null;
 
     constructor(private readonly root: HTMLElement) {
@@ -13,6 +14,13 @@ export class NodeNoteTooltip {
         this.tooltip.hidden = true;
         document.body.appendChild(this.tooltip);
         this.bindEvents();
+        this.markerObserver = new MutationObserver(() => this.syncNoteMarkers());
+        this.markerObserver.observe(this.root, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class'],
+        });
     }
 
     /** Mark nodes that carry a note so users can spot them on the map. */

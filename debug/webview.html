@@ -60,7 +60,7 @@
       <div class="side-panel-header">
         <div class="side-panel-tabs">
           <button id="panel-tab-node" class="side-panel-tab active" type="button" data-panel="node">节点</button>
-          <button id="panel-tab-theme" class="side-panel-tab" type="button" data-panel="theme">主题</button>
+          <button id="panel-tab-theme" class="side-panel-tab" type="button" data-panel="theme">全局</button>
         </div>
         <button id="btn-close-panel" class="panel-close-btn" type="button">&times;</button>
       </div>
@@ -87,6 +87,10 @@
               <label class="panel-label" for="inspector-note">注释</label>
               <textarea id="inspector-note" class="panel-textarea" rows="3"></textarea>
             </div>
+            <div class="panel-section">
+              <label class="panel-label" for="inspector-ai-note">AI 备注</label>
+              <textarea id="inspector-ai-note" class="panel-textarea" rows="4" placeholder="仅提供给 AI 的背景、目标和约束"></textarea>
+            </div>
             <p class="panel-hint">节点文字支持 Markdown：**粗体**、*斜体*、[链接](url)、$E=mc^2$</p>
           </div>
         </div>
@@ -104,6 +108,15 @@
             <input id="bg-pattern-color" class="panel-color" type="color" value="#808080" />
             <input id="bg-pattern-opacity" class="style-opacity" type="range" min="5" max="100" step="5" value="5" />
             <span id="bg-pattern-opacity-value" class="style-opacity-value">5%</span>
+          </div>
+          <div class="panel-section">
+            <label class="panel-toggle" for="auto-save-enabled">
+              <span>
+                <span class="panel-toggle-title">自动保存</span>
+                <span class="panel-toggle-description">每 5 秒保存未写入的修改</span>
+              </span>
+              <input id="auto-save-enabled" type="checkbox" checked />
+            </label>
           </div>
         </div>
       </div>
@@ -136,6 +149,7 @@
         children: [{
           id: 'child',
           topic: 'Child Topic',
+          note: 'Persistent note',
           children: [{
             id: 'grandchild',
             topic: 'Grandchild Topic',
@@ -165,10 +179,19 @@
       log('MindElixir loaded: ' + !!window.MindElixir, !!window.MindElixir);
 
       await new Promise((r) => setTimeout(r, 100));
-      window.postMessage({ type: 'update', text: JSON.stringify(defaultDoc), images: {} }, '*');
+      window.postMessage({ type: 'update', text: JSON.stringify(defaultDoc), images: {}, autoSaveEnabled: true }, '*');
       await new Promise((r) => setTimeout(r, 300));
 
       log('mind map rendered', !!document.querySelector('me-tpc'));
+      const notedTopic = Array.from(document.querySelectorAll('me-tpc'))
+        .find((topic) => topic.nodeObj?.id === 'child');
+      log('note marker rendered', notedTopic?.classList.contains('has-note') === true);
+      notedTopic?.click();
+      await new Promise((r) => setTimeout(r, 50));
+      log('note marker survives selection', notedTopic?.classList.contains('has-note') === true);
+      log('note marker offset from node', notedTopic
+        && getComputedStyle(notedTopic, '::after').right === '-14px'
+        && getComputedStyle(notedTopic, '::after').top === '-7px');
       const collapseControls = Array.from(document.querySelectorAll('me-epd.minus'));
       log('collapse controls vertically centered', collapseControls.length >= 2 && collapseControls.every((control) => {
         const controlRect = control.getBoundingClientRect();
@@ -177,7 +200,82 @@
         const parentCenter = parentRect.top + parentRect.height / 2;
         return Math.abs(controlCenter - parentCenter) < 1;
       }));
-      log('side panel starts collapsed', document.getElementById('side-panel').classList.contains('hidden'));
+      log('side panel starts expanded', !document.getElementById('side-panel').classList.contains('hidden'));
+
+      const mapContainer = document.querySelector('.map-container');
+      const topicCountBeforeHistoryTest = document.querySelectorAll('me-tpc').length;
+      mapContainer?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Tab',
+        bubbles: true,
+        cancelable: true,
+      }));
+      await new Promise((r) => setTimeout(r, 50));
+      const inlineEditor = document.getElementById('input-box');
+      inlineEditor?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      }));
+      inlineEditor?.blur();
+      await new Promise((r) => setTimeout(r, 50));
+      log('native history records canvas operation',
+        document.querySelectorAll('me-tpc').length === topicCountBeforeHistoryTest + 1);
+
+      mapContainer?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'z',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+      await new Promise((r) => setTimeout(r, 100));
+      const undoMessage = window.__TEST__.lastMessage;
+      log('Cmd/Ctrl+Z uses native canvas undo and persists it',
+        document.querySelectorAll('me-tpc').length === topicCountBeforeHistoryTest
+        && undoMessage?.type === 'change'
+        && JSON.parse(undoMessage.text).nodeData.children[0].children.length === 1);
+
+      mapContainer?.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Z',
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+      await new Promise((r) => setTimeout(r, 100));
+      const redoMessage = window.__TEST__.lastMessage;
+      log('Cmd/Ctrl+Shift+Z uses native canvas redo and persists it',
+        document.querySelectorAll('me-tpc').length === topicCountBeforeHistoryTest + 1
+        && redoMessage?.type === 'change'
+        && JSON.parse(redoMessage.text).nodeData.children[0].children.length === 2);
+      notedTopic?.click();
+      await new Promise((r) => setTimeout(r, 50));
+
+      const aiNoteInput = document.getElementById('inspector-ai-note');
+      log('AI note field present', !!aiNoteInput);
+      aiNoteInput.value = 'Only consider offline deployment.';
+      aiNoteInput.dispatchEvent(new Event('focus'));
+      aiNoteInput.dispatchEvent(new Event('blur'));
+      await new Promise((r) => setTimeout(r, 50));
+      const aiNoteMessage = window.__TEST__.lastMessage;
+      log('AI note saved on node', aiNoteMessage?.type === 'change'
+        && JSON.parse(aiNoteMessage.text).nodeData.children[0].ai_note === 'Only consider offline deployment.');
+
+      const imageBytes = Uint8Array.from(
+        atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9WlOkAAAAASUVORK5CYII='),
+        (char) => char.charCodeAt(0),
+      );
+      const imageTransfer = new DataTransfer();
+      imageTransfer.items.add(new File([imageBytes], 'clipboard.png', { type: 'image/png' }));
+      document.dispatchEvent(new ClipboardEvent('paste', {
+        clipboardData: imageTransfer,
+        bubbles: true,
+        cancelable: true,
+      }));
+      await new Promise((r) => setTimeout(r, 300));
+      const imagePasteMessage = window.__TEST__.lastMessage;
+      log('clipboard image pasted into selected node', imagePasteMessage?.type === 'change'
+        && imagePasteMessage.images?.child?.startsWith('data:image/png')
+        && !!JSON.parse(imagePasteMessage.text).nodeData.children[0].image);
 
       const exportTrigger = document.getElementById('export-trigger');
       const mmfExport = document.querySelector('[data-export="mmf"]');
@@ -214,7 +312,16 @@
 
       document.getElementById('panel-tab-theme').click();
       await new Promise((r) => setTimeout(r, 50));
+      log('global tab label', document.getElementById('panel-tab-theme').textContent.trim() === '全局');
       log('theme tab active', document.getElementById('panel-page-theme').classList.contains('active'));
+
+      const autoSaveCheckbox = document.getElementById('auto-save-enabled');
+      log('auto-save enabled by default', autoSaveCheckbox.checked === true);
+      autoSaveCheckbox.click();
+      await new Promise((r) => setTimeout(r, 50));
+      log('auto-save toggle updates global setting',
+        window.__TEST__.lastMessage?.type === 'setAutoSave'
+        && window.__TEST__.lastMessage?.enabled === false);
 
       const select = document.getElementById('theme-select');
       select.value = 'auroraDark';

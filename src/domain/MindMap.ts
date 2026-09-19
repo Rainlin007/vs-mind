@@ -18,6 +18,7 @@ export interface Node {
     };
     hyperLink?: string;
     note?: string;
+    ai_note?: string;
     dangerouslySetInnerHTML?: string;
     // Add other MindElixir properties as needed (tags, icons, etc.)
 }

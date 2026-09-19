@@ -9,13 +9,15 @@ import { MAP_TOOLBAR_HTML } from '../webview/toolbarHtml';
 export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 
     private static readonly viewType = 'vscode-mm.mindmap';
+    private static readonly configurationSection = 'vscode-mm';
+    private static readonly autoSaveIntervalMs = 5_000;
     private static readonly panels = new Map<string, vscode.WebviewPanel>();
     private static activeUri: string | undefined;
 
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
         const imageRepository = new VSCodeImageRepository();
         const service = new MindMapService(imageRepository);
-        const exportService = new ExportService();
+        const exportService = new ExportService(context.workspaceState, vscode);
         const provider = new MindMapEditorProvider(context, service, exportService);
         const providerRegistration = vscode.window.registerCustomEditorProvider(MindMapEditorProvider.viewType, provider, {
             webviewOptions: { retainContextWhenHidden: true },
@@ -60,6 +62,26 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
 
         let disposed = false;
+        let saveInProgress = false;
+
+        const saveDirtyDocument = async (): Promise<void> => {
+            if (!this.isAutoSaveEnabled() || disposed || document.isClosed || !document.isDirty || saveInProgress) {
+                return;
+            }
+
+            saveInProgress = true;
+            try {
+                await document.save();
+            } catch (error) {
+                console.error(`Auto-save failed for ${document.uri.toString()}:`, error);
+            } finally {
+                saveInProgress = false;
+            }
+        };
+
+        const autoSaveTimer = setInterval(() => {
+            void saveDirtyDocument();
+        }, MindMapEditorProvider.autoSaveIntervalMs);
 
         const updateWebview = async () => {
             if (disposed) {
@@ -84,6 +106,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                 text: result.text,
                 images: result.images,
                 documentBaseName: path.basename(document.uri.fsPath, path.extname(document.uri.fsPath)),
+                autoSaveEnabled: this.isAutoSaveEnabled(),
             });
         }
 
@@ -101,10 +124,21 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
             }
         });
 
+        const configurationSubscription = vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration(`${MindMapEditorProvider.configurationSection}.autoSave`)) {
+                webviewPanel.webview.postMessage({
+                    type: 'autoSaveSetting',
+                    enabled: this.isAutoSaveEnabled(),
+                });
+            }
+        });
+
         // Make sure we get rid of the listener when our editor is closed.
         webviewPanel.onDidDispose(() => {
             disposed = true;
+            clearInterval(autoSaveTimer);
             changeDocumentSubscription.dispose();
+            configurationSubscription.dispose();
             MindMapEditorProvider.panels.delete(documentUri);
             if (MindMapEditorProvider.activeUri === documentUri) {
                 MindMapEditorProvider.activeUri = undefined;
@@ -126,6 +160,13 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
             switch (e.type) {
                 case 'sidePanelState':
                     void vscode.commands.executeCommand('setContext', 'vscode-mm.sidePanelHidden', !e.visible);
+                    return;
+                case 'setAutoSave':
+                    if (typeof e.enabled === 'boolean') {
+                        await vscode.workspace
+                            .getConfiguration(MindMapEditorProvider.configurationSection)
+                            .update('autoSave', e.enabled, vscode.ConfigurationTarget.Global);
+                    }
                     return;
                 case 'change':
                     isInternalUpdate = true;
@@ -162,6 +203,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                                 defaultName,
                                 format,
                                 Buffer.from(e.dataBase64, 'base64'),
+                                document.uri,
                             );
                             return;
                         }
@@ -169,7 +211,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                             void vscode.window.showErrorMessage('导出内容无效。');
                             return;
                         }
-                        await this.exportService.saveExport(defaultName, format, e.text);
+                        await this.exportService.saveExport(defaultName, format, e.text, document.uri);
                     } catch (error) {
                         console.error('Export failed:', error);
                         void vscode.window.showErrorMessage('导出失败，请重试。');
@@ -201,6 +243,12 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
         );
 
         return vscode.workspace.applyEdit(edit);
+    }
+
+    private isAutoSaveEnabled(): boolean {
+        return vscode.workspace
+            .getConfiguration(MindMapEditorProvider.configurationSection)
+            .get<boolean>('autoSave', true);
     }
 
     /**
@@ -244,7 +292,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 						<div class="side-panel-header">
 							<div class="side-panel-tabs">
 								<button id="panel-tab-node" class="side-panel-tab active" type="button" data-panel="node">节点</button>
-								<button id="panel-tab-theme" class="side-panel-tab" type="button" data-panel="theme">主题</button>
+								<button id="panel-tab-theme" class="side-panel-tab" type="button" data-panel="theme">全局</button>
 							</div>
 							<button id="btn-close-panel" class="panel-close-btn" type="button" title="关闭">&times;</button>
 						</div>
@@ -311,6 +359,15 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 											<span id="bg-pattern-opacity-value" class="style-opacity-value">5%</span>
 										</div>
 									</div>
+								</div>
+								<div class="panel-section">
+									<label class="panel-toggle" for="auto-save-enabled">
+										<span>
+											<span class="panel-toggle-title">自动保存</span>
+											<span class="panel-toggle-description">每 5 秒保存未写入的修改</span>
+										</span>
+										<input id="auto-save-enabled" type="checkbox" checked />
+									</label>
 								</div>
 							</div>
 						</div>

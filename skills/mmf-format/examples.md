@@ -70,6 +70,7 @@
         },
         "hyperLink": "https://example.com/mvp",
         "note": "Q3 前完成核心流程",
+        "ai_note": "评估时优先考虑中小团队、低部署成本和数据隐私。",
         "children": [
           { "id": "auth", "topic": "用户认证" },
           { "id": "editor", "topic": "导图编辑" }

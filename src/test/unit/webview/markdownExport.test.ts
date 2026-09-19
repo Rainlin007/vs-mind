@@ -11,6 +11,7 @@ describe('markdownExport Unit Test Suite', () => {
                 root: true,
                 hyperLink: 'https://example.com',
                 note: 'Root note',
+                ai_note: 'Use the approved constraints only.',
                 tags: ['planning', ''],
                 image: {
                     url: 'data:image/png;base64,abc',
@@ -36,6 +37,7 @@ describe('markdownExport Unit Test Suite', () => {
             '# [Central Topic](https://example.com) #planning',
             '',
             '> Root note',
+            '> **AI 备注：** Use the approved constraints only.',
             '![Central Topic](data:image/png;base64,abc)',
             '',
             '- Child 2',
@@ -59,5 +61,47 @@ describe('markdownExport Unit Test Suite', () => {
         } as unknown as MindElixirData;
 
         assert.strictEqual(toExportMarkdown(data), '# HTML Topic & More\n');
+    });
+
+    it('should place summaries after their grouped sibling range', () => {
+        const data = {
+            nodeData: {
+                id: 'root',
+                topic: 'Delivery Plan',
+                children: [
+                    {
+                        id: 'research',
+                        topic: 'Research',
+                        children: [{ id: 'interviews', topic: 'Interviews' }],
+                    },
+                    { id: 'build', topic: 'Build' },
+                    { id: 'ship', topic: 'Ship' },
+                ],
+            },
+            summaries: [{
+                id: 'summary-1',
+                parent: 'root',
+                start: 0,
+                end: 1,
+                label: 'Research and implementation are ready for review.',
+            }],
+        } as unknown as MindElixirData;
+
+        assert.strictEqual(toExportMarkdown(data), [
+            '# Delivery Plan',
+            '',
+            '## Research',
+            '',
+            '- Interviews',
+            '',
+            '## Build',
+            '',
+            '## 摘要（Research ～ Build）',
+            '',
+            'Research and implementation are ready for review.',
+            '',
+            '## Ship',
+            '',
+        ].join('\n'));
     });
 });
