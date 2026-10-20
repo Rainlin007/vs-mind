@@ -65,6 +65,7 @@ node skills/mmf-format/scripts/mmf-to-markdown.mjs plan.mmf --output context.md
 ### Keyboard & Interaction
 
 - **Tab** — Add a child node (when a node is selected)
+- **＋ beside the selected node** — Add a child node and edit its text
 - **Enter** — Add a sibling node
 - **Delete** — Remove selected node(s)
 - **Double-click** — Edit node text
@@ -216,6 +217,7 @@ node skills/mmf-format/scripts/mmf-to-markdown.mjs plan.mmf --output context.md
 ### 快捷键与交互
 
 - **Tab** — 为选中节点添加子节点
+- **选中节点旁的 ＋** — 添加子节点并编辑文字
 - **Enter** — 添加兄弟节点
 - **Delete** — 删除选中节点
 - **双击** — 编辑节点文字

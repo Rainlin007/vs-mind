@@ -192,9 +192,114 @@ try {
   await page.waitForSelector('#input-box', { visible: true, timeout: 2000 });
   await page.keyboard.press('Escape');
   result.logs.push({ ok: true, msg: 'image preview still opens and restores node selection and editing when closed' });
+
+  await page.keyboard.press('F2');
+  await page.waitForSelector('#input-box', { visible: true });
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#input-box', { hidden: true });
+  assert.equal(await page.$eval(nodeSelector, el => el.nodeObj.topic), '',
+    'clearing an image node title must save an empty string');
+  const cleared = await page.evaluate(() => window.__TEST__.lastMessage);
+  assert.equal(JSON.parse(cleared.text).nodeData.topic, '');
+  assert.deepEqual(JSON.parse(cleared.text).nodeData.image, nodeImage);
+  assert.equal(cleared.images['image-edit'], originalImage);
+  assert.equal(await page.$eval(`${nodeSelector} .text`, el => el.textContent), '');
+  await page.click(`${nodeSelector} > img`);
+  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'flex');
+  assert.equal(await page.$eval('#popup-img', el => el.src), originalImage);
+  await page.click('#image-popup', { offset: { x: 10, y: 10 } });
+  result.logs.push({ ok: true, msg: 'clearing an image node title saves empty text and retains the image and its original' });
 } catch (error) {
   result.passed = false;
   result.logs.push({ ok: false, msg: `image node editing: ${error.message}` });
+}
+try {
+  await page.evaluate(() => window.postMessage({
+    type: 'update',
+    text: JSON.stringify({
+      nodeData: {
+        id: 'empty-root', topic: 'Plain root', root: true,
+        children: [{
+          id: 'empty-child', topic: 'Plain child',
+          children: [{ id: 'kept-child', topic: 'Keep this descendant' }],
+        }],
+      },
+      arrows: [],
+    }),
+    images: {},
+  }, '*'));
+  await page.waitForSelector('[data-nodeid="meempty-root"]');
+  for (const [id, submitKey] of [['empty-root', 'Enter'], ['empty-child', 'Tab']]) {
+    const selector = `[data-nodeid="me${id}"]`;
+    await page.click(`${selector} .text`);
+    await page.keyboard.press('F2');
+    await page.waitForSelector('#input-box', { visible: true });
+    await page.keyboard.press('Backspace');
+    if (id === 'empty-child') await page.keyboard.type('   ');
+    await page.keyboard.press(submitKey);
+    await page.waitForSelector('#input-box', { hidden: true });
+    assert.equal(await page.$eval(selector, el => el.nodeObj.topic), '');
+    const size = await page.$eval(`${selector} .text`, el => {
+      const rect = el.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+    assert.ok(size.width >= 16 && size.height >= 16, 'empty text must retain a clickable area');
+  }
+  result.logs.push({ ok: true, msg: 'root and child nodes accept empty or whitespace-only titles with Enter and Tab' });
+
+  const rootSelector = '[data-nodeid="meempty-root"]';
+  await page.click(`${rootSelector} .text`, { count: 2, delay: 60 });
+  await page.waitForSelector('#input-box', { visible: true });
+  await page.keyboard.type('Cancelled title');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.$eval(rootSelector, el => el.nodeObj.topic), '');
+  await page.keyboard.press('F2');
+  await page.waitForSelector('#input-box', { visible: true });
+  await page.keyboard.type('Restored title');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('F2');
+  await page.waitForSelector('#input-box', { visible: true });
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.$eval(rootSelector, el => el.nodeObj.topic), 'Restored title');
+
+  await page.keyboard.press('F2');
+  await page.waitForSelector('#input-box', { visible: true });
+  await page.keyboard.press('Backspace');
+  await page.click('[data-nodeid="meempty-child"] .text');
+  assert.equal(await page.$eval(rootSelector, el => el.nodeObj.topic), '');
+  assert.equal(await page.$eval('[data-nodeid="mekept-child"]', el => el.nodeObj.topic), 'Keep this descendant');
+  result.logs.push({ ok: true, msg: 'empty nodes can be edited again; Escape cancels edits and clicking another node commits clearing' });
+
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.keyboard.down(modifier);
+  await page.keyboard.press('z');
+  await page.keyboard.up(modifier);
+  await page.waitForFunction(() => document.querySelector('[data-nodeid="meempty-root"]').nodeObj.topic === 'Restored title');
+  await page.keyboard.down(modifier);
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('Z');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up(modifier);
+  await page.waitForFunction(() => {
+    const message = window.__TEST__.lastMessage;
+    return message?.type === 'change' && JSON.parse(message.text).nodeData.topic === '';
+  });
+  const saved = await page.evaluate(() => window.__TEST__.lastMessage);
+  const data = JSON.parse(saved.text);
+  assert.equal(data.nodeData.children[0].topic, '');
+  assert.equal(data.nodeData.children[0].children[0].topic, 'Keep this descendant');
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => window.__TEST__?.done === true);
+  await page.evaluate(message => window.postMessage({ ...message, type: 'update' }, '*'), saved);
+  await page.waitForSelector(rootSelector);
+  assert.equal(await page.$eval(rootSelector, el => el.nodeObj.topic), '');
+  assert.equal(await page.$eval('[data-nodeid="meempty-child"]', el => el.nodeObj.topic), '');
+  result.logs.push({ ok: true, msg: 'clearing titles supports undo/redo and empty titles survive document reload' });
+} catch (error) {
+  result.passed = false;
+  result.logs.push({ ok: false, msg: `empty node titles: ${error.message}` });
 }
 try {
   await page.evaluate(() => {
@@ -316,6 +421,110 @@ try {
 } catch (error) {
   result.passed = false;
   result.logs.push({ ok: false, msg: `node clipboard: ${error.message}` });
+}
+try {
+  await page.evaluate(() => window.postMessage({
+    type: 'update',
+    text: JSON.stringify({
+      nodeData: {
+        id: 'add-root', topic: 'Add child test', root: true,
+        children: [
+          { id: 'add-leaf', topic: 'Leaf' },
+          {
+            id: 'add-branch', topic: 'Branch', note: 'A note',
+            children: [{ id: 'add-existing', topic: 'Existing child' }],
+          },
+        ],
+      },
+      arrows: [], direction: 1,
+    }),
+    images: {},
+  }, '*'));
+  await page.waitForSelector('[data-nodeid="meadd-leaf"]');
+  await page.waitForSelector('.node-add-child', { hidden: true });
+  await page.click('[data-nodeid="meadd-leaf"] .text');
+  await page.waitForSelector('.node-add-child', { visible: true });
+  assert.equal(await page.$eval('.node-add-child', el => el.getAttribute('aria-label')), '添加子节点');
+  assert.equal(await page.$eval('.node-add-child', el => el.closest('me-nodes')), null);
+  await page.click('.node-add-child');
+  await page.waitForSelector('#input-box', { visible: true });
+  await page.waitForSelector('.node-add-child', { hidden: true });
+  await page.keyboard.type('Child from plus');
+  await page.keyboard.press('Enter');
+  let saved = await page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text));
+  assert.equal(saved.nodeData.children[0].children[0].topic, 'Child from plus');
+  result.logs.push({ ok: true, msg: 'selected leaf shows an accessible plus button that creates and edits a child' });
+
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.keyboard.down(modifier);
+  await page.keyboard.press('z');
+  // Creating a node and committing its title are separate native history steps.
+  await page.keyboard.press('z');
+  await page.keyboard.up(modifier);
+  await page.waitForFunction(() => !document.querySelector('[data-nodeid="meadd-leaf"]').nodeObj.children?.length);
+  await page.keyboard.down(modifier);
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('Z');
+  await page.keyboard.press('Z');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up(modifier);
+  await page.waitForFunction(() => document.querySelector('[data-nodeid="meadd-leaf"]').nodeObj.children?.length === 1);
+
+  await page.click('[data-nodeid="meadd-branch"] .text');
+  const collapseSelector = 'me-parent:has(> [data-nodeid="meadd-branch"]) > me-epd';
+  await page.click(collapseSelector);
+  await page.waitForSelector('[data-nodeid="meadd-existing"]', { hidden: true });
+  await page.waitForSelector('.node-add-child', { visible: true });
+  assert.ok(await page.evaluate(selector => {
+    const button = document.querySelector('.node-add-child').getBoundingClientRect();
+    const collapse = document.querySelector(selector).getBoundingClientRect();
+    return button.left > collapse.right;
+  }, collapseSelector), 'add-child and expand/collapse controls must not overlap');
+  await page.click('.node-add-child');
+  await page.waitForSelector('#input-box', { visible: true });
+  await page.keyboard.type('Second branch child');
+  await page.keyboard.press('Enter');
+  saved = await page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text));
+  assert.equal(saved.nodeData.children[1].children.length, 2);
+  assert.equal(saved.nodeData.children[1].children[0].topic, 'Existing child');
+  assert.equal(saved.nodeData.children[1].children[1].topic, 'Second branch child');
+  result.logs.push({ ok: true, msg: 'plus-created children support undo/redo and can be added to collapsed branches without losing descendants' });
+
+  await page.evaluate(data => window.postMessage({
+    type: 'update', text: JSON.stringify({ ...data, direction: 0 }), images: {},
+  }, '*'), saved);
+  await page.waitForSelector('.lhs [data-nodeid="meadd-leaf"]');
+  await page.click('[data-nodeid="meadd-root"] .text');
+  await page.waitForSelector('.node-add-child', { visible: true });
+  await page.click('.node-add-child');
+  await page.waitForSelector('#input-box', { visible: true });
+  await page.keyboard.type('New root child');
+  await page.keyboard.press('Enter');
+  saved = await page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text));
+  assert.equal(saved.nodeData.children.length, 3);
+  assert.equal(saved.nodeData.children[2].topic, 'New root child');
+
+  await page.click('[data-nodeid="meadd-leaf"] .text');
+  await page.waitForSelector('.node-add-child', { visible: true });
+  await page.keyboard.down(modifier);
+  await page.keyboard.press('-');
+  await page.keyboard.up(modifier);
+  await page.waitForFunction(() => {
+    const button = document.querySelector('.node-add-child').getBoundingClientRect();
+    const node = document.querySelector('[data-nodeid="meadd-leaf"]').getBoundingClientRect();
+    return button.right < node.left && button.width < 22
+      && Math.abs((button.top + button.bottom - node.top - node.bottom) / 2) < 1;
+  }, { timeout: 2000 });
+  await page.keyboard.down(modifier);
+  await page.click('[data-nodeid="meadd-branch"] .text');
+  await page.keyboard.up(modifier);
+  await page.waitForSelector('.node-add-child', { hidden: true });
+  await page.click('.map-container', { offset: { x: 10, y: 10 } });
+  await page.waitForSelector('.node-add-child', { hidden: true });
+  result.logs.push({ ok: true, msg: 'plus works on the root, follows left layout and zoom, and hides for multiple or no selected nodes' });
+} catch (error) {
+  result.passed = false;
+  result.logs.push({ ok: false, msg: `add-child button: ${error.message}` });
 }
 const logs = result.logs.map((l) => `${l.ok ? '✓' : '✗'} ${l.msg}`).join('\n');
 

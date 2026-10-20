@@ -70,6 +70,12 @@ if (typeof (global as any).MutationObserver === 'undefined') {
         disconnect() { }
     };
 }
+if (typeof global.requestAnimationFrame === 'undefined') {
+    global.requestAnimationFrame = (callback: FrameRequestCallback) => {
+        callback(0);
+        return 0;
+    };
+}
 
 // Mock MindElixir on window
 (global as any).window.MindElixir = sinon.stub();
@@ -222,6 +228,9 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 redo: sinon.spy(),
                 clearHistory: sinon.spy(),
                 currentNode: null,
+                currentNodes: [],
+                map: createDomElement(),
+                addChild: sinon.stub(),
                 reshapeNode: sinon.stub(),
                 selectNode: sinon.spy(),
                 findEle: sinon.stub().returns(null),

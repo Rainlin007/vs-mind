@@ -12,6 +12,8 @@ import { isNodeTextEditing, setupEditClipboard } from './editClipboard';
 import { setupUndoRedoViewportPreservation } from './preserveViewport';
 import { NodeNoteTooltip } from './NodeNoteTooltip';
 import { setupNodeClipboard } from './nodeClipboard';
+import { setupNodeTextEditing } from './nodeTextEditing';
+import { NodeAddButton } from './NodeAddButton';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -44,6 +46,7 @@ interface MindElixirInstance {
     container: HTMLElement;
     map: HTMLElement;
     scaleVal: number;
+    addChild(node: HTMLElement): void;
     currentNodes?: HTMLElement[];
     undo?: () => void;
     redo?: () => void;
@@ -295,10 +298,12 @@ export class MindMapApp {
         });
 
         this.noteTooltip = new NodeNoteTooltip(this.mind.container);
+        new NodeAddButton(this.mind);
 
         this.setupImagePaste();
         setupEditClipboard(this.mind);
         setupNodeClipboard(this.mind);
+        setupNodeTextEditing(this.mind);
         this.initListeners();
         this.syncNodePanel();
     }

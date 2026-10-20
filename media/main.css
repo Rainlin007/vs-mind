@@ -436,6 +436,37 @@ body {
     stroke-linejoin: round;
 }
 
+/* Add-child control follows the selected node within the transformed canvas. */
+.map-container .node-add-child {
+    position: absolute;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--selected);
+    border-radius: 50%;
+    background: var(--bgcolor);
+    color: var(--selected);
+    font: 20px/1 sans-serif;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.map-container .node-add-child[hidden] {
+    display: none;
+}
+
+.map-container .node-add-child:hover,
+.map-container .node-add-child:focus-visible {
+    background: var(--selected);
+    color: var(--bgcolor);
+    outline: 2px solid var(--selected);
+    outline-offset: 2px;
+}
+
 /* Allow image clicks to be distinguished from clicks on the topic text. */
 .map-container me-tpc > img {
     pointer-events: auto;
@@ -457,6 +488,12 @@ body {
 /* Markdown supplies line breaks and block spacing; do not render HTML source whitespace. */
 .map-container me-tpc > .text {
     white-space: normal;
+}
+
+/* Empty titles still need a target for selecting and reopening the editor. */
+.map-container me-tpc > .text:empty {
+    min-width: 1em;
+    min-height: 1em;
 }
 
 /* Node notes: marker on map + hover tooltip */
