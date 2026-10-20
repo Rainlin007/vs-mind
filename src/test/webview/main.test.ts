@@ -230,7 +230,6 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 currentNode: null,
                 currentNodes: [],
                 map: createDomElement(),
-                addChild: sinon.stub(),
                 reshapeNode: sinon.stub(),
                 selectNode: sinon.spy(),
                 findEle: sinon.stub().returns(null),
