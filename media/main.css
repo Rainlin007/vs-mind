@@ -436,6 +436,12 @@ body {
     stroke-linejoin: round;
 }
 
+/* Allow image clicks to be distinguished from clicks on the topic text. */
+.map-container me-tpc > img {
+    pointer-events: auto;
+    cursor: zoom-in;
+}
+
 /* MindElixir disables text selection on the map; re-enable only in the inline editor */
 .mind-elixir-input,
 #input-box {

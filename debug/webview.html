@@ -174,6 +174,19 @@
       };
     }
 
+    function selectTestNode(id) {
+      // MindElixir selects nodes on pointerdown, not click. Resolve the current
+      // element because undo/redo rebuilds the canvas.
+      const topic = Array.from(document.querySelectorAll('me-tpc'))
+        .find((element) => element.nodeObj?.id === id);
+      if (!topic) throw new Error(`Missing test node: ${id}`);
+      for (const type of ['pointerdown', 'pointerup']) {
+        topic.dispatchEvent(new PointerEvent(type, {
+          bubbles: true, cancelable: true, pointerType: 'touch', pointerId: 1, button: 0,
+        }));
+      }
+    }
+
     async function runTests() {
       document.getElementById('debug-bar').textContent = '';
       log('MindElixir loaded: ' + !!window.MindElixir, !!window.MindElixir);
@@ -186,7 +199,7 @@
       const notedTopic = Array.from(document.querySelectorAll('me-tpc'))
         .find((topic) => topic.nodeObj?.id === 'child');
       log('note marker rendered', notedTopic?.classList.contains('has-note') === true);
-      notedTopic?.click();
+      selectTestNode('child');
       await new Promise((r) => setTimeout(r, 50));
       log('note marker survives selection', notedTopic?.classList.contains('has-note') === true);
       log('note marker offset from node', notedTopic
@@ -247,7 +260,7 @@
         document.querySelectorAll('me-tpc').length === topicCountBeforeHistoryTest + 1
         && redoMessage?.type === 'change'
         && JSON.parse(redoMessage.text).nodeData.children[0].children.length === 2);
-      notedTopic?.click();
+      selectTestNode('child');
       await new Promise((r) => setTimeout(r, 50));
 
       const aiNoteInput = document.getElementById('inspector-ai-note');

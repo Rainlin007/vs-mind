@@ -68,7 +68,8 @@ node skills/mmf-format/scripts/mmf-to-markdown.mjs plan.mmf --output context.md
 - **Enter** — Add a sibling node
 - **Delete** — Remove selected node(s)
 - **Double-click** — Edit node text
-- **Ctrl/Cmd + V** — Paste an image into the selected node
+- **Ctrl/Cmd + C** — Copy selected nodes and their descendants
+- **Ctrl/Cmd + V** — Paste copied nodes under the selected node, or paste an image into it
 
 ## Development
 
@@ -217,7 +218,8 @@ node skills/mmf-format/scripts/mmf-to-markdown.mjs plan.mmf --output context.md
 - **Enter** — 添加兄弟节点
 - **Delete** — 删除选中节点
 - **双击** — 编辑节点文字
-- **Ctrl/Cmd + V** — 向选中节点粘贴图片
+- **Ctrl/Cmd + C** — 复制选中节点及其子节点
+- **Ctrl/Cmd + V** — 将复制的节点粘贴为选中节点的子节点，或粘贴图片
 
 ## 开发
 

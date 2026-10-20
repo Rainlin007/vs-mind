@@ -11,6 +11,7 @@ import { ExportToolbar } from './ExportToolbar';
 import { isNodeTextEditing, setupEditClipboard } from './editClipboard';
 import { setupUndoRedoViewportPreservation } from './preserveViewport';
 import { NodeNoteTooltip } from './NodeNoteTooltip';
+import { setupNodeClipboard } from './nodeClipboard';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -299,6 +300,7 @@ export class MindMapApp {
 
         this.setupImagePaste();
         setupEditClipboard(this.mind);
+        setupNodeClipboard(this.mind);
         this.initListeners();
         this.syncNodePanel();
     }
@@ -546,7 +548,8 @@ export class MindMapApp {
             return;
         }
 
-        const img = target.tagName === 'IMG' ? target : target.closest('me-tpc')?.querySelector('img');
+        // Clicking the topic text must remain available for selection and editing.
+        const img = target.tagName === 'IMG' ? target : null;
 
         if (img) {
             let parent: HTMLElement | null = img.parentElement;
