@@ -33,6 +33,7 @@ export interface MindMapData {
     bgPatternOpacity?: number;
     direction?: number;
     lineStyle?: 'curve' | 'elbow' | 'straight' | 'branch' | 'step';
+    rainbowLines?: boolean;
 }
 
 export function createDefaultMindMapData(): MindMapData {
@@ -50,6 +51,7 @@ export function createDefaultMindMapData(): MindMapData {
         bgPatternOpacity: 5,
         direction: 1,
         lineStyle: 'curve',
+        rainbowLines: false,
     };
 }
 

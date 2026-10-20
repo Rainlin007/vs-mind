@@ -1,10 +1,19 @@
-import type { MindElixirInstance, MainLineParams, SubLineParams } from 'mind-elixir';
+import type { MindElixirInstance, MainLineParams, SubLineParams, Theme } from 'mind-elixir';
 
 export type LineStyle = 'curve' | 'elbow' | 'straight' | 'branch' | 'step';
 export type LayoutDirection = 0 | 1 | 2;
 
 export const DEFAULT_DIRECTION: LayoutDirection = 1;
 export const DEFAULT_LINE_STYLE: LineStyle = 'curve';
+
+// A branch keeps its color down the subtree through MindElixir's native palette.
+// Return a copy so changing a document never mutates a shared preset or history.
+export function getLinePalette(theme: Theme, rainbowLines: boolean): string[] {
+    if (!rainbowLines) return [...theme.palette];
+    return theme.type === 'dark'
+        ? ['#f87171', '#fb923c', '#facc15', '#4ade80', '#22d3ee', '#818cf8', '#c084fc']
+        : ['#e05252', '#d9822b', '#b39819', '#39945b', '#259aab', '#6171d6', '#a65ac7'];
+}
 
 const LHS = 'lhs';
 const MAX_ELBOW_RADIUS = 12;

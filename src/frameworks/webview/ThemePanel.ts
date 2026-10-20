@@ -13,6 +13,7 @@ import {
     LINE_STYLE_OPTIONS,
     normalizeDirection,
     normalizeLineStyle,
+    getLinePalette,
     type LayoutDirection,
     type LineStyle,
 } from './lineSettings';
@@ -25,6 +26,7 @@ export interface ThemeDocumentSettings {
     bgPatternOpacity: number;
     direction: LayoutDirection;
     lineStyle: LineStyle;
+    rainbowLines: boolean;
 }
 
 export const DEFAULT_THEME_SETTINGS: ThemeDocumentSettings = {
@@ -32,6 +34,7 @@ export const DEFAULT_THEME_SETTINGS: ThemeDocumentSettings = {
     ...DEFAULT_BACKGROUND_PATTERN,
     direction: DEFAULT_DIRECTION,
     lineStyle: DEFAULT_LINE_STYLE,
+    rainbowLines: false,
 };
 
 export interface MindElixirThemeHost {
@@ -49,6 +52,7 @@ export class ThemePanel {
     private themeSelect: HTMLSelectElement;
     private directionSelect: HTMLSelectElement;
     private lineStyleSelect: HTMLSelectElement;
+    private lineColorSelect: HTMLSelectElement;
     private bgPatternSelect: HTMLSelectElement;
     private bgPatternColor: HTMLInputElement;
     private bgPatternOpacity: HTMLInputElement;
@@ -64,6 +68,7 @@ export class ThemePanel {
         this.themeSelect = document.getElementById('theme-select') as HTMLSelectElement;
         this.directionSelect = document.getElementById('direction-select') as HTMLSelectElement;
         this.lineStyleSelect = document.getElementById('line-style-select') as HTMLSelectElement;
+        this.lineColorSelect = document.getElementById('line-color-select') as HTMLSelectElement;
         this.bgPatternSelect = document.getElementById('bg-pattern-select') as HTMLSelectElement;
         this.bgPatternColor = document.getElementById('bg-pattern-color') as HTMLInputElement;
         this.bgPatternOpacity = document.getElementById('bg-pattern-opacity') as HTMLInputElement;
@@ -89,7 +94,7 @@ export class ThemePanel {
     /**
      * MindElixir restores the theme while rebuilding an undo/redo snapshot,
      * which also replaces our custom branch generators with the theme defaults.
-     * Reapply the selected line style after native history navigation.
+     * Reapply the selected line style and palette after native history navigation.
      */
     reapplyLineStyle(): void {
         this.applyLineStyleOnly();
@@ -103,6 +108,7 @@ export class ThemePanel {
             bgPatternOpacity: data?.bgPatternOpacity ?? DEFAULT_BACKGROUND_PATTERN.bgPatternOpacity,
             direction: normalizeDirection(data?.direction),
             lineStyle: normalizeLineStyle(data?.lineStyle),
+            rainbowLines: data?.rainbowLines === true,
         });
         this.applyBgPattern();
         if (this.mindReady) {
@@ -168,6 +174,12 @@ export class ThemePanel {
             this.onChange();
         });
 
+        this.lineColorSelect?.addEventListener('change', () => {
+            this.settings.rainbowLines = this.lineColorSelect.value === 'rainbow';
+            this.applyLineStyleOnly();
+            this.onChange();
+        });
+
         this.bgPatternSelect?.addEventListener('change', () => {
             this.settings.backgroundPattern = this.bgPatternSelect.value as BackgroundPattern;
             this.applyBgPattern();
@@ -202,6 +214,7 @@ export class ThemePanel {
         if (this.themeSelect) this.themeSelect.value = settings.themeTemplate;
         if (this.directionSelect) this.directionSelect.value = String(settings.direction);
         if (this.lineStyleSelect) this.lineStyleSelect.value = settings.lineStyle;
+        if (this.lineColorSelect) this.lineColorSelect.value = settings.rainbowLines ? 'rainbow' : 'theme';
         if (this.bgPatternSelect) this.bgPatternSelect.value = settings.backgroundPattern;
         if (this.bgPatternColor) this.bgPatternColor.value = settings.bgPatternColor;
         if (this.bgPatternOpacity) this.bgPatternOpacity.value = String(settings.bgPatternOpacity);
@@ -226,6 +239,11 @@ export class ThemePanel {
 
     private applyLineStyleOnly(): void {
         if (!this.mindReady) return;
+        const preset = getThemeById(this.settings.themeTemplate) || getThemeById(DEFAULT_THEME_ID);
+        this.mind.theme = {
+            ...this.mind.theme,
+            palette: getLinePalette(preset?.theme || this.mind.theme, this.settings.rainbowLines),
+        };
         applyLineStyle(this.mind as Parameters<typeof applyLineStyle>[0], this.settings.lineStyle);
     }
 
@@ -238,14 +256,17 @@ export class ThemePanel {
 export function prepareMindData(json: MindElixirData & Partial<ThemeDocumentSettings>): MindElixirData & ThemeDocumentSettings {
     const template = json.themeTemplate || DEFAULT_THEME_ID;
     const preset = getThemeById(template) || getThemeById(DEFAULT_THEME_ID);
+    const theme = preset?.theme || json.theme;
+    const rainbowLines = json.rainbowLines === true;
     return {
         ...json,
         themeTemplate: template,
-        theme: preset?.theme || json.theme,
+        theme: theme ? { ...theme, palette: getLinePalette(theme, rainbowLines) } : undefined,
         backgroundPattern: json.backgroundPattern || DEFAULT_BACKGROUND_PATTERN.backgroundPattern,
         bgPatternColor: json.bgPatternColor || DEFAULT_BACKGROUND_PATTERN.bgPatternColor,
         bgPatternOpacity: json.bgPatternOpacity ?? DEFAULT_BACKGROUND_PATTERN.bgPatternOpacity,
         direction: normalizeDirection(json.direction),
         lineStyle: normalizeLineStyle(json.lineStyle),
+        rainbowLines,
     };
 }

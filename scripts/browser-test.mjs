@@ -422,6 +422,115 @@ try {
   result.passed = false;
   result.logs.push({ ok: false, msg: `node clipboard: ${error.message}` });
 }
+try {
+  await page.evaluate(() => {
+    window.postMessage({
+      type: 'update',
+      text: JSON.stringify({
+        nodeData: {
+          id: 'rainbow-root', topic: 'Rainbow branches', root: true,
+          children: Array.from({ length: 7 }, (_, i) => ({
+            id: `rainbow-${i}`, topic: ['Ideas', 'Research', 'Design', 'Build', 'Test', 'Launch', 'Review'][i],
+            children: [{ id: `rainbow-leaf-${i}`, topic: 'Next step' }],
+          })),
+        },
+        themeTemplate: 'clayLight',
+      }),
+      images: {},
+    }, '*');
+  });
+  await page.waitForSelector('[data-nodeid="merainbow-root"]');
+  await page.click('#panel-tab-theme');
+  const colors = () => page.$$eval('.lines path', paths => paths.map(p => p.getAttribute('stroke')));
+  const inheritsBranchColors = () => page.$$eval('me-main > me-wrapper', wrappers => wrappers.every(wrapper => {
+    const paths = [...wrapper.querySelectorAll('.subLines path')];
+    const color = wrapper.querySelector('me-tpc').style.borderColor;
+    return paths.length && paths.every(p => getComputedStyle(p).stroke === color);
+  }));
+  const themeColors = await colors();
+  assert.equal(await page.$eval('#line-color-select', el => el.value), 'theme');
+  await page.select('#line-color-select', 'rainbow');
+  const rainbowColors = await colors();
+  assert.equal(new Set(rainbowColors).size, 7);
+  assert.equal(await inheritsBranchColors(), true);
+  assert.equal(await page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text).rainbowLines), true);
+  result.logs.push({ ok: true, msg: 'rainbow branches use seven colors, inherit down subtrees and save the setting' });
+
+  for (const direction of ['0', '1', '2']) {
+    await page.select('#direction-select', direction);
+    for (const style of ['curve', 'straight', 'elbow', 'step', 'branch']) {
+      await page.select('#line-style-select', style);
+      assert.deepEqual(await colors(), rainbowColors);
+      assert.equal(await inheritsBranchColors(), true);
+    }
+  }
+  await page.select('#theme-select', 'oceanDark');
+  const darkColors = await colors();
+  assert.equal(new Set(darkColors).size, 7);
+  assert.notDeepEqual(darkColors, rainbowColors);
+  await page.select('#line-color-select', 'theme');
+  assert.equal(new Set(await colors()).size, 2);
+  await page.select('#theme-select', 'clayLight');
+  assert.deepEqual(await colors(), themeColors);
+  await page.select('#line-color-select', 'rainbow');
+  result.logs.push({ ok: true, msg: 'rainbow works with every line style/layout, adapts to dark themes and restores theme colors when disabled' });
+
+  await page.select('#direction-select', '1');
+  await page.select('#line-style-select', 'curve');
+  await page.click('[data-nodeid="merainbow-0"] .text');
+  await page.keyboard.press('Tab');
+  await page.waitForSelector('#input-box');
+  await page.keyboard.type('New child');
+  await page.keyboard.press('Enter');
+  assert.equal(await inheritsBranchColors(), true);
+  // Toggle after recording history: undo restores an older theme snapshot.
+  await page.click('#panel-tab-theme');
+  await page.select('#line-color-select', 'theme');
+  await page.focus('.map-container');
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.keyboard.down(modifier);
+  await page.keyboard.press('z');
+  await page.keyboard.up(modifier);
+  await page.waitForFunction(() => document.querySelector('.lines path')?.getAttribute('stroke') === '#e0733a');
+  assert.deepEqual(await colors(), themeColors);
+  await page.select('#line-color-select', 'rainbow');
+  await page.focus('.map-container');
+  await page.keyboard.down(modifier);
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('Z');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up(modifier);
+  await page.waitForFunction(() => document.querySelector('.lines path')?.getAttribute('stroke') === '#e05252');
+  assert.deepEqual(await colors(), rainbowColors);
+  assert.equal(await inheritsBranchColors(), true);
+  result.logs.push({ ok: true, msg: 'new nodes inherit rainbow colors and undo/redo preserves the current color mode' });
+
+  const saved = await page.evaluate(() => {
+    document.getElementById('export-trigger').click();
+    document.querySelector('[data-export="mmf"]').click();
+    return JSON.parse(window.__TEST__.lastMessage.text);
+  });
+  assert.equal(saved.rainbowLines, true);
+  // Native branch color overrides remain intact when the global palette changes.
+  saved.nodeData.children[6].branchColor = '#123456';
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => window.__TEST__?.done === true);
+  await page.evaluate(data => window.postMessage({
+    type: 'update', text: JSON.stringify(data), images: {},
+  }, '*'), saved);
+  await page.waitForSelector('[data-nodeid="merainbow-root"]');
+  assert.equal(await page.$eval('#line-color-select', el => el.value), 'rainbow');
+  assert.deepEqual(await colors(), [...rainbowColors.slice(0, 6), '#123456']);
+  assert.equal(await inheritsBranchColors(), true);
+  await page.click('#panel-tab-theme');
+  if (process.env.BROWSER_SCREENSHOT_PATH) {
+    await page.screenshot({ path: process.env.BROWSER_SCREENSHOT_PATH });
+  }
+  result.logs.push({ ok: true, msg: 'MMF export/reload retains rainbow mode and respects custom branch colors' });
+} catch (error) {
+  result.passed = false;
+  result.logs.push({ ok: false, msg: `rainbow lines: ${error.message}` });
+}
 const logs = result.logs.map((l) => `${l.ok ? '✓' : '✗'} ${l.msg}`).join('\n');
 
 console.log('\n--- Browser test ---');

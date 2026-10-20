@@ -194,6 +194,7 @@ themeTemplate: auroraLight | mintLight | clayLight | graphiteLight
 direction:     0 (向左) | 1 (向右) | 2 (双侧)
 
 lineStyle:     curve | straight | elbow | step | branch
+rainbowLines:  true | false (default: false; branchColor overrides take precedence)
 
 backgroundPattern: none | dots | grid | crossDot
 ```

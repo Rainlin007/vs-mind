@@ -344,6 +344,13 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 									<select id="line-style-select" class="panel-select"></select>
 								</div>
 								<div class="panel-section">
+									<label class="panel-label" for="line-color-select">线条配色</label>
+									<select id="line-color-select" class="panel-select">
+										<option value="theme">跟随主题</option>
+										<option value="rainbow">彩虹分支</option>
+									</select>
+								</div>
+								<div class="panel-section">
 									<label class="panel-label" for="bg-pattern-select">背景花纹</label>
 									<select id="bg-pattern-select" class="panel-select">
 										<option value="none">无</option>

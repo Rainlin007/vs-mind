@@ -117,6 +117,7 @@ const themeDomIds = [
     'theme-select',
     'direction-select',
     'line-style-select',
+    'line-color-select',
     'bg-pattern-select',
     'bg-pattern-color',
     'bg-pattern-opacity',

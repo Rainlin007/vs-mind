@@ -14,6 +14,7 @@ A VS Code extension that provides a visual mind map editor. Edit `.mmf` files di
 - **Right-side property panel** — Two tabs: **Node** (font, color, notes, AI notes) and **Global** (colors, layout, line style, background pattern)
 - **8 preset themes** — 4 light + 4 dark color schemes
 - **Layout & lines** — Left / right / bilateral layout; five curated styles: smooth curve, clean straight, rounded elbow, stepped polyline, and classic underline
+- **Rainbow branches** — Choose **Global → Line colors → Rainbow branches** for seven branch colors that adapt to light/dark themes; descendants inherit their branch color
 - **Background patterns** — None, dots, grid, or cross-dot with adjustable color and opacity
 - **Node images** — Paste images from clipboard; click to preview full size
 - **Export options** — Export to MMF, PNG, plaintext, or Markdown
@@ -128,7 +129,8 @@ MMF documents store the raw MindElixir data structure as UTF-8 JSON. Example fie
   "bgPatternColor": "#808080",
   "bgPatternOpacity": 5,
   "direction": 1,
-  "lineStyle": "curve"
+  "lineStyle": "curve",
+  "rainbowLines": false
 }
 ```
 
@@ -137,6 +139,7 @@ MMF documents store the raw MindElixir data structure as UTF-8 JSON. Example fie
 | `themeTemplate` | Preset theme ID (`auroraLight`, `mintLight`, `clayLight`, …) |
 | `direction` | Layout: `0` left, `1` right, `2` bilateral |
 | `lineStyle` | `curve` \| `straight` \| `elbow` \| `step` \| `branch` |
+| `rainbowLines` | `true` for rainbow branch colors; defaults to `false` (theme colors). Explicit node `branchColor` overrides are preserved. |
 | `backgroundPattern` | `none` \| `dots` \| `grid` \| `crossDot` |
 
 Nodes may include an optional `ai_note` string. It is stored in the MMF file for AI consumers and is not rendered on the canvas.
@@ -164,6 +167,7 @@ Nodes may include an optional `ai_note` string. It is stored in the MMF file for
 - **可视化编辑** — 拖拽节点，增删改思维导图结构
 - **右侧属性面板** — 分 **节点**（字号、颜色、注释、AI 备注）和 **全局**（配色、布局、线条、背景花纹）两个 Tab
 - **8 套预设主题** — 4 款亮色 + 4 款暗色
+- **彩虹线条** — 在 **全局 → 线条配色 → 彩虹分支** 中开启；七种分支颜色适配亮暗主题，子分支沿用所属分支颜色
 - **布局与线条** — 向左 / 向右 / 双侧布局；流畅曲线、简洁直线、圆角折线、阶梯折线、经典下划线
 - **背景花纹** — 无 / 点阵 / 网格 / 十字点，可调颜色与透明度
 - **节点图片** — 从剪贴板粘贴图片，点击可全屏预览
@@ -279,7 +283,8 @@ MMF 文档直接以 UTF-8 JSON 保存 MindElixir 数据结构，示例：
   "bgPatternColor": "#808080",
   "bgPatternOpacity": 5,
   "direction": 1,
-  "lineStyle": "curve"
+  "lineStyle": "curve",
+  "rainbowLines": false
 }
 ```
 
@@ -288,6 +293,7 @@ MMF 文档直接以 UTF-8 JSON 保存 MindElixir 数据结构，示例：
 | `themeTemplate` | 预设主题 ID（如 `auroraLight`、`clayLight` 等） |
 | `direction` | 布局：`0` 向左，`1` 向右，`2` 双侧 |
 | `lineStyle` | `curve` 流畅曲线 \| `straight` 简洁直线 \| `elbow` 圆角折线 \| `step` 阶梯折线 \| `branch` 经典下划线 |
+| `rainbowLines` | `true` 开启彩虹分支；默认 `false` 跟随主题。节点自定义的 `branchColor` 优先。 |
 | `backgroundPattern` | `none` 无 \| `dots` 点阵 \| `grid` 网格 \| `crossDot` 十字点 |
 
 节点可包含可选的 `ai_note` 字符串，用于向 AI 提供备注，不会渲染在画布上。
