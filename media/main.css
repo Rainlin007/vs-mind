@@ -451,6 +451,12 @@ body {
 #input-box {
     user-select: text !important;
     -webkit-user-select: text !important;
+    white-space: pre-wrap;
+}
+
+/* Markdown supplies line breaks and block spacing; do not render HTML source whitespace. */
+.map-container me-tpc > .text {
+    white-space: normal;
 }
 
 /* Node notes: marker on map + hover tooltip */

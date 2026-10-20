@@ -432,7 +432,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 arrows: [],
             }));
             const renderedNode = { id: 'image-node' };
-            mindElixirMock.E.withArgs('image-node').returns(renderedNode);
+            (app.mind.findEle as sinon.SinonStub).withArgs('image-node').returns(renderedNode);
             const resizeStub = sinon.stub(ImageProcessor, 'resizeImage').resolves({
                 base64: 'data:image/jpeg;base64,resized',
                 width: 200,
@@ -469,6 +469,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             assert.deepStrictEqual((app as any).originalImageCache, {
                 'image-node': 'data:image/png;base64,mock'
             });
+            assert.ok((app.mind.selectNode as sinon.SinonSpy).calledWith(renderedNode));
             resizeStub.restore();
         });
     });
