@@ -442,6 +442,98 @@ body {
     cursor: zoom-in;
 }
 
+.image-resize-handle {
+    --resize-accent: var(--vscode-focusBorder, #4c88f7);
+    position: fixed;
+    z-index: 31;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    appearance: none;
+    transform: translate(-50%, -50%);
+    cursor: nwse-resize;
+    touch-action: none;
+    outline: none;
+}
+
+/* A precise visual anchor with a forgiving hit area at every canvas zoom. */
+.image-resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    box-sizing: border-box;
+    border: 1.5px solid var(--resize-accent);
+    border-radius: 1.5px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+    transform: translate(-50%, -50%);
+    transition: box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.image-resize-handle:is(:hover, :focus-visible, .is-resizing)::after {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--resize-accent) 15%, transparent);
+}
+
+.image-resize-handle.is-resizing::after {
+    background: var(--resize-accent);
+}
+
+.image-resize-outline {
+    position: fixed;
+    z-index: 30;
+    box-sizing: border-box;
+    border: 1px solid var(--vscode-focusBorder, #4c88f7);
+    opacity: 0.45;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+}
+
+.image-resize-size {
+    position: fixed;
+    z-index: 31;
+    padding: 4px 7px;
+    border: 1px solid var(--vscode-widget-border, #dce2eb);
+    border-radius: 5px;
+    background: var(--vscode-editorWidget-background, #fff);
+    color: var(--vscode-editorWidget-foreground, #334155);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 8%);
+    font: 11px/16px var(--vscode-font-family, system-ui, sans-serif);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.image-resize-handle:is(:hover, :focus-visible, .is-resizing) + .image-resize-outline,
+.image-resize-handle:is(:hover, :focus-visible, .is-resizing) ~ .image-resize-size {
+    opacity: 1;
+}
+
+.image-resize-handle[hidden],
+.image-resize-outline[hidden],
+.image-resize-size[hidden] {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .image-resize-handle::after,
+    .image-resize-outline,
+    .image-resize-size {
+        transition: none;
+    }
+}
+
+.map-container me-tpc:has(> img) {
+    max-width: none;
+}
+
 /* MindElixir disables text selection on the map; re-enable only in the inline editor */
 .mind-elixir-input,
 #input-box {

@@ -168,6 +168,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
             });
             assert.strictEqual(mockCanvas.width, 200);
             assert.strictEqual(mockCanvas.height, 200);
+            assert.ok(mockCanvas.toDataURL.calledOnceWithExactly('image/png'));
         });
     });
 

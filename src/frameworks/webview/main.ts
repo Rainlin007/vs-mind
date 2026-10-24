@@ -13,6 +13,7 @@ import { setupUndoRedoViewportPreservation } from './preserveViewport';
 import { NodeNoteTooltip } from './NodeNoteTooltip';
 import { setupNodeClipboard } from './nodeClipboard';
 import { setupNodeTextEditing } from './nodeTextEditing';
+import { ImageResizeControl } from './ImageResizeControl';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -31,6 +32,7 @@ interface MindElixirInstance {
     initRight(): void;
     initSide(): void;
     linkDiv(): void;
+    move(dx: number, dy: number): void;
     direction: number;
     theme: Theme;
     generateMainBranch: unknown;
@@ -149,7 +151,7 @@ export class ImageProcessor {
                 if (ctx) {
                     ctx.drawImage(img, 0, 0, width, height);
                     resolve({
-                        base64: canvas.toDataURL('image/jpeg', 0.8),
+                        base64: canvas.toDataURL('image/png'),
                         width,
                         height
                     });
@@ -255,6 +257,7 @@ export class MindMapApp {
             toolBar: true,
             keypress: true,
             allowUndo: true,
+            imageProxy: (url) => this.originalImagesByThumbnail.get(url) ?? url,
             markdown: createMindElixirMarkdownParser() as Options['markdown'],
             pasteHandler: (event) => {
                 void this.handleImagePaste(event);
@@ -296,6 +299,7 @@ export class MindMapApp {
         });
 
         this.noteTooltip = new NodeNoteTooltip(this.mind.container);
+        new ImageResizeControl(this.mind);
 
         this.setupImagePaste();
         setupEditClipboard(this.mind);
@@ -470,12 +474,6 @@ export class MindMapApp {
                     this.renderDocument(doc, selectedNodeId);
                     this.syncOriginalImagesToCanvas();
                     this.lastContent = text;
-
-                    if (message.images && Object.keys(message.images).length > 0) {
-                        setTimeout(() => {
-                            this.mind.refresh();
-                        }, 10);
-                    }
                 } catch (e) {
                     console.error("Failed to init mind map", e);
                 }

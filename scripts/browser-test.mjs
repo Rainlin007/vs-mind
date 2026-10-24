@@ -161,7 +161,7 @@ try {
   }, nodeImage);
   const nodeSelector = 'me-tpc[data-nodeid="meimage-edit"]';
   await page.waitForSelector(`${nodeSelector} .text strong`);
-  // The update handler refreshes image nodes asynchronously.
+  // Wait for the image to finish loading before editing the node.
   await page.waitForNetworkIdle({ idleTime: 100 });
 
   await page.click(`${nodeSelector} .text strong`);
@@ -213,6 +213,172 @@ try {
 } catch (error) {
   result.passed = false;
   result.logs.push({ ok: false, msg: `image node editing: ${error.message}` });
+}
+try {
+  const images = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1000;
+    canvas.height = 500;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 1000, 500);
+    ctx.fillStyle = '#123456';
+    ctx.font = '40px sans-serif';
+    ctx.fillText('Original image / readable text', 30, 100);
+    const original = canvas.toDataURL('image/png');
+    const thumbnail = document.createElement('canvas');
+    thumbnail.width = 200;
+    thumbnail.height = 100;
+    thumbnail.getContext('2d').drawImage(canvas, 0, 0, 200, 100);
+    return { original, thumbnail: thumbnail.toDataURL('image/png') };
+  });
+  await page.evaluate(({ original, thumbnail }) => window.postMessage({
+    type: 'update',
+    text: JSON.stringify({
+      nodeData: {
+        id: 'resize-root', topic: 'Resize image', root: true,
+        image: { url: thumbnail, width: 200, height: 100 },
+        children: [{ id: 'resize-child', topic: 'Layout stays connected' }],
+      },
+      arrows: [],
+    }),
+    images: { 'resize-root': original },
+  }, '*'), images);
+  const selector = '[data-nodeid="meresize-root"]';
+  await page.waitForSelector(`${selector} > img`);
+  await page.waitForNetworkIdle({ idleTime: 100 });
+  assert.equal(await page.$eval(`${selector} > img`, el => el.naturalWidth), 1000);
+  await page.click(`${selector} .text`);
+  await page.waitForSelector('.image-resize-handle', { visible: true });
+  const beginDrag = async () => {
+    // Undo/redo restores the viewport on the next animation frame; the handle
+    // then follows that geometry on its own frame.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const rect = await page.$eval('.image-resize-handle', el => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    await page.mouse.move(rect.x, rect.y);
+    await page.mouse.down();
+    return rect;
+  };
+  const start = await beginDrag();
+  const originalRect = await page.$eval(`${selector} > img`, el => {
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y };
+  });
+  const scale = await page.$eval(`${selector} > img`, el => el.getBoundingClientRect().width / 200);
+  await page.mouse.move(start.x + 120 * scale, start.y + 60 * scale, { steps: 8 });
+  assert.equal(await page.$eval(selector, el => el.nodeObj.image.width), 200,
+    'drag preview must not mutate the persisted model or create history entries');
+  const draggedRect = await page.$eval(`${selector} > img`, el => {
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+  assert.ok(Math.abs(draggedRect.x - originalRect.x) < 2 && Math.abs(draggedRect.y - originalRect.y) < 2,
+    'resizing must keep the image top-left anchored');
+  await page.mouse.up();
+  await page.waitForFunction(() => JSON.parse(window.__TEST__.lastMessage.text).nodeData.image.width === 320);
+  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none');
+  assert.equal(await page.$eval(selector, el => el.nodeObj.image.height), 160);
+  let saved = await page.evaluate(() => window.__TEST__.lastMessage);
+  assert.equal(JSON.parse(saved.text).nodeData.image.url, images.thumbnail,
+    'displaying the original must not duplicate full-resolution data in the MMF');
+  assert.equal(saved.images['resize-root'], images.original);
+  result.logs.push({ ok: true, msg: 'old thumbnails display the original; real dragging resizes proportionally, anchors layout and persists on release' });
+
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.keyboard.down(modifier);
+  await page.keyboard.press('z');
+  await page.keyboard.up(modifier);
+  await page.waitForFunction(() => document.querySelector('[data-nodeid="meresize-root"]').nodeObj.image.width === 200);
+  assert.equal(await page.$eval(`${selector} > img`, el => el.src), images.original);
+  await page.keyboard.down(modifier);
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('Z');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up(modifier);
+  await page.waitForFunction(() => document.querySelector('[data-nodeid="meresize-root"]').nodeObj.image.width === 320);
+  await page.click(`${selector} .text`);
+  await page.waitForSelector('.image-resize-handle', { visible: true });
+  const cancelStart = await beginDrag();
+  await page.mouse.move(cancelStart.x + 50, cancelStart.y + 25, { steps: 4 });
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  assert.equal(await page.$eval(`${selector} > img`, el => el.style.width), '320px');
+  assert.equal(await page.$eval(selector, el => el.nodeObj.image.width), 320);
+
+  // Exercise the library's real zoom handler, then drag in screen pixels.
+  const canvasRect = await page.$eval('.map-container', el => {
+    const r = el.getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  });
+  await page.mouse.move(canvasRect.x, canvasRect.y);
+  await page.keyboard.down('Control');
+  await page.mouse.wheel({ deltaY: 250 });
+  await page.keyboard.up('Control');
+  await page.waitForFunction(() => {
+    const img = document.querySelector('[data-nodeid="meresize-root"] > img');
+    return Math.abs(img.getBoundingClientRect().width / 320 - 1) > 0.01;
+  }, { timeout: 2000 });
+  const zoom = await page.$eval(`${selector} > img`, el => el.getBoundingClientRect().width / 320);
+  const zoomStart = await beginDrag();
+  await page.mouse.move(zoomStart.x + 80 * zoom, zoomStart.y + 40 * zoom, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForFunction(() => document.querySelector('[data-nodeid="meresize-root"]').nodeObj.image.width === 400);
+  assert.equal(await page.$eval(selector, el => el.nodeObj.image.height), 200);
+  saved = await page.evaluate(() => window.__TEST__.lastMessage);
+  result.logs.push({ ok: true, msg: 'image resize is one undo step, supports redo and Escape cancellation, and accounts for canvas zoom' });
+
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => window.__TEST__?.done === true);
+  await page.evaluate(message => window.postMessage({ ...message, type: 'update' }, '*'), saved);
+  await page.waitForSelector(`${selector} > img`);
+  assert.equal(await page.$eval(selector, el => el.nodeObj.image.width), 400);
+  assert.equal(await page.$eval(`${selector} > img`, el => el.src), images.original);
+  await page.click(`${selector} > img`);
+  assert.equal(await page.$eval('#popup-img', el => el.src), images.original);
+  await page.click('#image-popup', { offset: { x: 10, y: 10 } });
+  if (process.env.IMAGE_RESIZE_SCREENSHOT_PATH) {
+    await page.screenshot({ path: process.env.IMAGE_RESIZE_SCREENSHOT_PATH });
+  }
+  result.logs.push({ ok: true, msg: 'resized dimensions and original quality survive reload, and image preview still works' });
+
+  // A left-hand child can normally be dragged to reparent it. Its image handle
+  // must resize without invoking that gesture or changing the tree structure.
+  const leftData = JSON.parse(saved.text);
+  leftData.nodeData.children[0].image = leftData.nodeData.image;
+  delete leftData.nodeData.image;
+  leftData.direction = 0;
+  await page.evaluate(({ data, original }) => window.postMessage({
+    type: 'update', text: JSON.stringify(data), images: { 'resize-child': original },
+  }, '*'), { data: leftData, original: images.original });
+  const childSelector = '[data-nodeid="meresize-child"]';
+  await page.waitForSelector(`${childSelector} > img`);
+  await page.click(`${childSelector} .text`);
+  await page.waitForSelector('.image-resize-handle', { visible: true });
+  const childScale = await page.$eval(`${childSelector} > img`, el => el.getBoundingClientRect().width / 400);
+  const childStart = await beginDrag();
+  await page.mouse.move(childStart.x + 40 * childScale, childStart.y + 20 * childScale, { steps: 5 });
+  await page.mouse.up();
+  const childSaved = await page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text));
+  assert.equal(childSaved.nodeData.children.length, 1);
+  assert.equal(childSaved.nodeData.children[0].id, 'resize-child');
+  assert.equal(childSaved.nodeData.children[0].image.width, 440);
+  assert.equal(childSaved.nodeData.children[0].image.height, 220);
+
+  // A drag that returns to its starting point must restore the preview as well.
+  await page.waitForSelector('.image-resize-handle', { visible: true });
+  const returnStart = await beginDrag();
+  await page.mouse.move(returnStart.x + 60, returnStart.y + 30, { steps: 3 });
+  await page.mouse.move(returnStart.x, returnStart.y, { steps: 3 });
+  await page.mouse.up();
+  assert.equal(await page.$eval(`${childSelector} > img`, el => el.style.width), '440px');
+  assert.equal(await page.$eval(childSelector, el => el.nodeObj.image.width), 440);
+  result.logs.push({ ok: true, msg: 'left-hand image nodes resize without reparenting, and returning the pointer restores the starting size' });
+} catch (error) {
+  result.passed = false;
+  result.logs.push({ ok: false, msg: `image resize: ${error.stack}` });
 }
 try {
   await page.evaluate(() => window.postMessage({
