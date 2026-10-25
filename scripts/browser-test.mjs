@@ -324,8 +324,7 @@ try {
   await page.click(`${selector} .text`);
   await page.waitForSelector('.image-resize-handle', { visible: true });
   const beginDrag = async () => {
-    // Undo/redo restores the viewport on the next animation frame; the handle
-    // then follows that geometry on its own frame.
+    // Let the resize handle follow the restored viewport on its next frame.
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const rect = await page.$eval('.image-resize-handle', el => {
       const r = el.getBoundingClientRect();
@@ -769,6 +768,80 @@ try {
 } catch (error) {
   result.passed = false;
   result.logs.push({ ok: false, msg: `rainbow lines: ${error.message}` });
+}
+try {
+  const data = {
+    nodeData: {
+      id: 'viewport-root', topic: 'Viewport root', root: true,
+      children: Array.from({ length: 8 }, (_, i) => ({ id: `viewport-${i}`, topic: `Branch ${i}` })),
+    },
+    direction: 1,
+  };
+  const update = async () => {
+    await page.evaluate(data => window.postMessage({
+      type: 'update', text: JSON.stringify(data), images: {},
+    }, '*'), data);
+    await page.waitForFunction(topic => document.querySelector('[data-nodeid="meviewport-0"]')?.nodeObj.topic === topic,
+      {}, data.nodeData.children[0].topic);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  };
+  const position = selector => page.$eval(selector, node => {
+    const rect = node.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, width: rect.width };
+  });
+  await update();
+  const selected = '[data-nodeid="meviewport-5"]';
+  await page.click(selected);
+  assert.equal(await page.$eval(selected, node => node.classList.contains('selected')), true);
+  for (const withSelection of [true, false]) {
+    if (!withSelection) {
+      await page.click('.map-container', { offset: { x: 15, y: 15 } });
+      assert.equal(await page.$$eval('me-tpc.selected', nodes => nodes.length), 0);
+    }
+    const anchor = withSelection ? selected : '[data-nodeid="meviewport-root"]';
+    const zoomBefore = await position(anchor);
+    const container = await position('.map-container');
+    await page.mouse.move(container.x, container.y);
+    await page.keyboard.down('Control');
+    await page.mouse.wheel({ deltaY: 150 });
+    await page.keyboard.up('Control');
+    await page.waitForFunction(({ anchor, width }) =>
+      Math.abs(document.querySelector(anchor).getBoundingClientRect().width - width) > 1,
+    {}, { anchor, width: zoomBefore.width });
+    // Pan without changing the zoom maintained by MindElixir.
+    await page.$eval('.map-canvas', map => {
+      map.style.transform = map.style.transform.replace(/translate3d\(([-\d.]+)px,\s*([-\d.]+)px/,
+        (_, x, y) => `translate3d(${Number(x) + 180}px, ${Number(y) - 120}px`);
+    });
+    const before = await position(anchor);
+    data.nodeData.children[0].topic += '\nAdditional content from document synchronization';
+    await update();
+    const after = await position(anchor);
+    assert.ok(Math.abs(after.x - before.x) < 2 && Math.abs(after.y - before.y) < 2,
+      `document refresh must preserve the ${withSelection ? 'selected node' : 'root'} screen position`);
+    assert.ok(Math.abs(after.width - before.width) < 1, 'document refresh must preserve zoom');
+    if (withSelection) assert.equal(await page.$eval(selected, node => node.classList.contains('selected')), true);
+  }
+  result.logs.push({ ok: true, msg: 'document synchronization preserves pan, zoom and selection, including when no node is selected' });
+  const latestPan = await page.evaluate(data => {
+    for (let i = 0; i < 2; i++) {
+      data.nodeData.children[0].topic += '\nRapid update';
+      window.dispatchEvent(new MessageEvent('message', { data: {
+        type: 'update', text: JSON.stringify(data), images: {},
+      } }));
+    }
+    const map = document.querySelector('.map-canvas');
+    map.style.transform = map.style.transform.replace(/translate3d\(([-\d.]+)px/,
+      (_, x) => `translate3d(${Number(x) + 60}px`);
+    return map.style.transform;
+  }, data);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert.equal(await page.$eval('.map-canvas', map => map.style.transform), latestPan,
+    'a pending viewport restoration must not overwrite a newer update or pan');
+  result.logs.push({ ok: true, msg: 'back-to-back document updates do not undo subsequent canvas panning' });
+} catch (error) {
+  result.passed = false;
+  result.logs.push({ ok: false, msg: `document viewport preservation: ${error.message}` });
 }
 const logs = result.logs.map((l) => `${l.ok ? '✓' : '✗'} ${l.msg}`).join('\n');
 

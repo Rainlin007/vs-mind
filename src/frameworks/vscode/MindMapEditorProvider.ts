@@ -63,6 +63,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 
         let disposed = false;
         let saveInProgress = false;
+        let updateGeneration = 0;
 
         const saveDirtyDocument = async (): Promise<void> => {
             if (!this.isAutoSaveEnabled() || disposed || document.isClosed || !document.isDirty || saveInProgress) {
@@ -88,8 +89,16 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                 return;
             }
 
-            const result = await this.service.getWebviewContent(document.getText(), document.uri.fsPath);
-            const isEmptyDocument = document.getText().trim().length === 0;
+            const generation = ++updateGeneration;
+            const version = document.version;
+            const text = document.getText();
+            const result = await this.service.getWebviewContent(text, document.uri.fsPath);
+            // Reading image sidecars is asynchronous. Never replay an older
+            // snapshot over edits made while that read was in flight.
+            if (disposed || generation !== updateGeneration || version !== document.version) {
+                return;
+            }
+            const isEmptyDocument = text.trim().length === 0;
 
             if (isEmptyDocument) {
                 const edit = new vscode.WorkspaceEdit();
@@ -97,7 +106,7 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                 await vscode.workspace.applyEdit(edit);
             }
 
-            if (disposed) {
+            if (disposed || generation !== updateGeneration) {
                 return;
             }
 
@@ -113,14 +122,14 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
         // Hook up event handlers so that we can synchronize the webview with the text document.
         // The text document acts as our model, so we have to update the webview whenever it changes.
 
-        // Use a flag to prevent infinite loops (webview update -> document update -> webview update)
-        let isInternalUpdate = false;
+        // Count in-flight edits so overlapping webview writes cannot echo back.
+        let internalUpdates = 0;
 
         const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.document.uri.toString() === document.uri.toString()) {
-                if (!isInternalUpdate) {
-                    updateWebview();
-                }
+            // Saving also emits an event for isDirty, with no content changes.
+            if (e.document.uri.toString() === document.uri.toString()
+                && e.contentChanges.length > 0 && internalUpdates === 0) {
+                void updateWebview();
             }
         });
 
@@ -169,12 +178,16 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
                     }
                     return;
                 case 'change':
-                    isInternalUpdate = true;
-                    await this.updateTextDocument(
-                        document,
-                        this.service.serializeWebviewContent(e.text),
-                    );
-                    isInternalUpdate = false;
+                    ++updateGeneration;
+                    ++internalUpdates;
+                    try {
+                        await this.updateTextDocument(
+                            document,
+                            this.service.serializeWebviewContent(e.text),
+                        );
+                    } finally {
+                        --internalUpdates;
+                    }
 
                     if (e.images) {
                         await this.service.saveImages(document.uri.fsPath, e.images);

@@ -86,7 +86,7 @@ const createDomElement = () => ({
     innerHTML: '',
     addEventListener: sinon.spy(),
     appendChild: sinon.spy(),
-    querySelector: sinon.stub().returns({}),
+    querySelector: sinon.stub().returns(null),
     querySelectorAll: sinon.stub().returns([]),
     setAttribute: sinon.spy(),
     classList: {

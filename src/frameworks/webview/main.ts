@@ -9,7 +9,7 @@ import { createMindElixirMarkdownParser } from './markdown';
 import { NodeInspector } from './NodeInspector';
 import { ExportToolbar } from './ExportToolbar';
 import { isNodeTextEditing, setupEditClipboard } from './editClipboard';
-import { setupUndoRedoViewportPreservation } from './preserveViewport';
+import { runWithViewportPreserved, setupUndoRedoViewportPreservation } from './preserveViewport';
 import { NodeNoteTooltip } from './NodeNoteTooltip';
 import { setupNodeClipboard } from './nodeClipboard';
 import { setupNodeTextEditing } from './nodeTextEditing';
@@ -471,7 +471,11 @@ export class MindMapApp {
                     const doc = prepareMindData(json as MindElixirData & Partial<ThemeDocumentSettings>);
                     this.originalImageCache = incomingImages;
                     this.rememberOriginalImages(doc.nodeData, incomingImages);
-                    this.renderDocument(doc, selectedNodeId);
+                    if (this.mindInitialized && this.mind.getData().nodeData.id === doc.nodeData.id) {
+                        runWithViewportPreserved(this.mind, () => this.renderDocument(doc, selectedNodeId));
+                    } else {
+                        this.renderDocument(doc, selectedNodeId);
+                    }
                     this.syncOriginalImagesToCanvas();
                     this.lastContent = text;
                 } catch (e) {

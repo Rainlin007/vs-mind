@@ -1,5 +1,5 @@
 /**
- * MindElixir undo/redo calls refresh(), which rebuilds layout. We keep the same
+ * MindElixir history and document updates rebuild layout. We keep the same
  * screen position for the anchor node (selected node, else root) and restore pan/zoom.
  */
 
@@ -39,7 +39,7 @@ function captureViewport(mind: ViewportPreservingMind): ViewportSnapshot | null 
         return null;
     }
 
-    const selected = mind.currentNodes?.[0];
+    const selected = mind.currentNodes?.[0] ?? findAnchorElement(mind, null);
     const snapshot: ViewportSnapshot = {
         transform: mind.map.style.transform,
         scaleVal: mind.scaleVal,
@@ -93,10 +93,10 @@ export function runWithViewportPreserved(
         return;
     }
 
-    requestAnimationFrame(() => {
-        restoreViewport(mind, snapshot);
-        onHistoryChange?.();
-    });
+    // Layout is rebuilt synchronously and getBoundingClientRect flushes it.
+    // Deferring restoration could overwrite a newer update or user pan.
+    restoreViewport(mind, snapshot);
+    onHistoryChange?.();
 }
 
 /**
