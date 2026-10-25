@@ -27,6 +27,7 @@ export interface ThemeDocumentSettings {
     direction: LayoutDirection;
     lineStyle: LineStyle;
     rainbowLines: boolean;
+    roundedImages: boolean;
 }
 
 export const DEFAULT_THEME_SETTINGS: ThemeDocumentSettings = {
@@ -35,9 +36,11 @@ export const DEFAULT_THEME_SETTINGS: ThemeDocumentSettings = {
     direction: DEFAULT_DIRECTION,
     lineStyle: DEFAULT_LINE_STYLE,
     rainbowLines: false,
+    roundedImages: false,
 };
 
 export interface MindElixirThemeHost {
+    container: HTMLElement;
     changeTheme(theme: Theme, shouldRefresh?: boolean): void;
     initLeft(): void;
     initRight(): void;
@@ -53,6 +56,7 @@ export class ThemePanel {
     private directionSelect: HTMLSelectElement;
     private lineStyleSelect: HTMLSelectElement;
     private lineColorSelect: HTMLSelectElement;
+    private roundedImagesCheckbox: HTMLInputElement;
     private bgPatternSelect: HTMLSelectElement;
     private bgPatternColor: HTMLInputElement;
     private bgPatternOpacity: HTMLInputElement;
@@ -69,6 +73,7 @@ export class ThemePanel {
         this.directionSelect = document.getElementById('direction-select') as HTMLSelectElement;
         this.lineStyleSelect = document.getElementById('line-style-select') as HTMLSelectElement;
         this.lineColorSelect = document.getElementById('line-color-select') as HTMLSelectElement;
+        this.roundedImagesCheckbox = document.getElementById('rounded-images') as HTMLInputElement;
         this.bgPatternSelect = document.getElementById('bg-pattern-select') as HTMLSelectElement;
         this.bgPatternColor = document.getElementById('bg-pattern-color') as HTMLInputElement;
         this.bgPatternOpacity = document.getElementById('bg-pattern-opacity') as HTMLInputElement;
@@ -109,7 +114,9 @@ export class ThemePanel {
             direction: normalizeDirection(data?.direction),
             lineStyle: normalizeLineStyle(data?.lineStyle),
             rainbowLines: data?.rainbowLines === true,
+            roundedImages: data?.roundedImages === true,
         });
+        this.applyImageStyle();
         this.applyBgPattern();
         if (this.mindReady) {
             this.applyDirection();
@@ -180,6 +187,12 @@ export class ThemePanel {
             this.onChange();
         });
 
+        this.roundedImagesCheckbox?.addEventListener('change', () => {
+            this.settings.roundedImages = this.roundedImagesCheckbox.checked;
+            this.applyImageStyle();
+            this.onChange();
+        });
+
         this.bgPatternSelect?.addEventListener('change', () => {
             this.settings.backgroundPattern = this.bgPatternSelect.value as BackgroundPattern;
             this.applyBgPattern();
@@ -215,6 +228,7 @@ export class ThemePanel {
         if (this.directionSelect) this.directionSelect.value = String(settings.direction);
         if (this.lineStyleSelect) this.lineStyleSelect.value = settings.lineStyle;
         if (this.lineColorSelect) this.lineColorSelect.value = settings.rainbowLines ? 'rainbow' : 'theme';
+        if (this.roundedImagesCheckbox) this.roundedImagesCheckbox.checked = settings.roundedImages;
         if (this.bgPatternSelect) this.bgPatternSelect.value = settings.backgroundPattern;
         if (this.bgPatternColor) this.bgPatternColor.value = settings.bgPatternColor;
         if (this.bgPatternOpacity) this.bgPatternOpacity.value = String(settings.bgPatternOpacity);
@@ -251,6 +265,10 @@ export class ThemePanel {
         if (!this.bgOverlay) return;
         applyBackgroundPattern(this.bgOverlay, this.settings);
     }
+
+    private applyImageStyle(): void {
+        this.mind.container.classList.toggle('rounded-images', this.settings.roundedImages);
+    }
 }
 
 export function prepareMindData(json: MindElixirData & Partial<ThemeDocumentSettings>): MindElixirData & ThemeDocumentSettings {
@@ -268,5 +286,6 @@ export function prepareMindData(json: MindElixirData & Partial<ThemeDocumentSett
         direction: normalizeDirection(json.direction),
         lineStyle: normalizeLineStyle(json.lineStyle),
         rainbowLines,
+        roundedImages: json.roundedImages === true,
     };
 }

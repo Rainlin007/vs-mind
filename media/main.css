@@ -507,6 +507,10 @@ body {
     cursor: zoom-in;
 }
 
+.map-container.rounded-images me-tpc img {
+    border-radius: 12px;
+}
+
 .image-resize-handle {
     --resize-accent: var(--vscode-focusBorder, #4c88f7);
     position: fixed;

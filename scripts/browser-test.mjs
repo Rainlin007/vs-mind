@@ -1106,6 +1106,90 @@ try {
   result.passed = false;
   result.logs.push({ ok: false, msg: `fit to view: ${error.stack}` });
 }
+try {
+  await page.setViewport({ width: 1440, height: 900 });
+  const data = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 120;
+    canvas.height = 80;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#fb1121';
+    context.fillRect(0, 0, 120, 80);
+    const image = { url: canvas.toDataURL(), width: 120, height: 80 };
+    return { nodeData: { id: 'rounded-root', topic: 'Image corners', root: true, image,
+      children: [{ id: 'rounded-child', topic: 'Second image', image }] } };
+  });
+  const load = async data => {
+    await page.evaluate(data => window.postMessage({ type: 'update', text: JSON.stringify(data), images: {} }, '*'), data);
+    await page.waitForSelector('[data-nodeid="merounded-child"] > img');
+    await page.waitForFunction(enabled => document.getElementById('rounded-images').checked === enabled,
+      {}, data.roundedImages === true);
+  };
+  const radii = () => page.$$eval('me-tpc > img', images => images.map(image => getComputedStyle(image).borderTopLeftRadius));
+  const exportData = async format => {
+    await page.evaluate(format => {
+      window.__TEST__.lastMessage = null;
+      document.getElementById('export-trigger').click();
+      document.querySelector(`[data-export="${format}"]`).click();
+    }, format);
+    await page.waitForFunction(format => window.__TEST__.lastMessage?.type === 'exportFile'
+      && window.__TEST__.lastMessage.format === format, {}, format);
+    return page.evaluate(() => window.__TEST__.lastMessage);
+  };
+  const countImagePixels = async () => {
+    const { dataBase64 } = await exportData('png');
+    return page.evaluate(async base64 => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${base64}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d');
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      for (let i = 0; i < pixels.length; i += 4) {
+        if (pixels[i] === 251 && pixels[i + 1] === 17 && pixels[i + 2] === 33 && pixels[i + 3] === 255) count++;
+      }
+      return count;
+    }, dataBase64);
+  };
+  await load(data);
+  await page.click('#panel-tab-theme');
+  assert.deepEqual(await radii(), ['0px', '0px'], 'existing documents keep square images by default');
+  const squarePixels = await countImagePixels();
+  assert.ok(squarePixels > 18000, 'PNG must contain both complete images');
+  await page.click('#rounded-images');
+  assert.deepEqual(await radii(), ['12px', '12px']);
+  assert.equal(await page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text).roundedImages), true);
+  const roundedPixels = await countImagePixels();
+  assert.ok(roundedPixels < squarePixels - 100 && roundedPixels > squarePixels * 0.9,
+    `PNG must clip image corners while preserving the image contents: ${squarePixels} -> ${roundedPixels}`);
+  const saved = JSON.parse((await exportData('mmf')).text);
+  assert.equal(saved.roundedImages, true);
+  assert.deepEqual(saved.nodeData.image, data.nodeData.image, 'rounding must not modify source image or dimensions');
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => window.__TEST__?.done === true);
+  await load(saved);
+  assert.deepEqual(await radii(), ['12px', '12px'], 'reopening the document restores rounded images');
+  await page.click('[data-nodeid="merounded-child"] .text');
+  await page.click('#action-focus');
+  assert.deepEqual(await radii(), ['12px'], 'focused branches retain rounded images');
+  await page.click('#action-focus');
+  await page.click('#panel-tab-theme');
+  await page.click('#rounded-images');
+  assert.deepEqual(await radii(), ['0px', '0px']);
+  assert.equal(await page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text).roundedImages), false);
+  assert.equal(await countImagePixels(), squarePixels, 'disabling rounding restores square PNG images');
+  await page.click('#rounded-images');
+  await load(data);
+  assert.deepEqual(await radii(), ['0px', '0px'], 'loading a document without the setting clears the previous rounding');
+  result.logs.push({ ok: true, msg: 'Global rounded images toggle applies to all images, persists through MMF reload/focus, clips PNG corners and resets for older documents without altering image data' });
+} catch (error) {
+  result.passed = false;
+  result.logs.push({ ok: false, msg: `rounded images: ${error.stack}` });
+}
 const logs = result.logs.map((l) => `${l.ok ? '✓' : '✗'} ${l.msg}`).join('\n');
 
 console.log('\n--- Browser test ---');

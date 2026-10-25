@@ -51,7 +51,7 @@ Press **F5** in VS Code to launch the Extension Development Host, then open or c
 2. Use the **top toolbar** to fold/unfold a branch, add child/sibling nodes, enter/leave focus mode, undo/redo, add relationships or summaries, and export. Buttons use icons with English tooltips; hover to see the action and any keyboard shortcut. **Fit to view**, zoom and recenter controls are at the bottom-right. Fit to view scales and centers the visible map to fit the available canvas.
 3. Open the **property panel** via the sidebar icon in the editor title bar (top-right).
 4. In the **Node** tab, select a node to edit its style, note, and optional AI note.
-5. In the **Global** tab, change color scheme, layout direction, line style, and background pattern.
+5. In the **Global** tab, change color scheme, layout direction, line style, and background pattern. Enable **Rounded images** to round all node image corners; this is saved with the map and included in PNG exports.
 6. Drag the **left edge** of the property panel to resize it.
 7. Changes are saved automatically to the file every 5 seconds. You can disable this in the **Global** tab or with the `vscode-mm.autoSave` setting.
 
@@ -134,7 +134,8 @@ MMF documents store the raw MindElixir data structure as UTF-8 JSON. Example fie
   "bgPatternOpacity": 5,
   "direction": 1,
   "lineStyle": "curve",
-  "rainbowLines": false
+  "rainbowLines": false,
+  "roundedImages": false
 }
 ```
 
@@ -143,6 +144,7 @@ MMF documents store the raw MindElixir data structure as UTF-8 JSON. Example fie
 | `themeTemplate` | Preset theme ID (`auroraLight`, `mintLight`, `clayLight`, …) |
 | `direction` | Layout: `0` left, `1` right, `2` bilateral |
 | `lineStyle` | `curve` \| `straight` \| `elbow` \| `step` \| `branch` |
+| `roundedImages` | `true` for rounded node image corners; defaults to `false`. |
 | `rainbowLines` | `true` for rainbow branch colors; defaults to `false` (theme colors). Explicit node `branchColor` overrides are preserved. |
 | `backgroundPattern` | `none` \| `dots` \| `grid` \| `crossDot` |
 
@@ -209,7 +211,7 @@ npm run compile
 2. 使用画布**右侧工具栏**进行节点操作：添加子节点/兄弟节点、删除等。
 3. 点击编辑器标题栏右上角的**侧栏图标**打开/关闭属性面板。
 4. 在 **节点** Tab 中选中节点，可编辑样式、注释和可选的 AI 备注。
-5. 在 **全局** Tab 中可切换配色、布局方向、线条样式和背景花纹。
+5. 在 **全局** Tab 中可切换配色、布局方向、线条样式和背景花纹。勾选 **Rounded images** 可统一开启节点图片圆角，设置随导图保存，导出 PNG 也保留圆角。
 6. 拖动属性面板**左边缘**可调整面板宽度。
 7. 修改会每 5 秒自动保存到文件。可在 **全局** Tab 中关闭，或修改全局设置 `vscode-mm.autoSave`。
 
@@ -288,7 +290,8 @@ MMF 文档直接以 UTF-8 JSON 保存 MindElixir 数据结构，示例：
   "bgPatternOpacity": 5,
   "direction": 1,
   "lineStyle": "curve",
-  "rainbowLines": false
+  "rainbowLines": false,
+  "roundedImages": false
 }
 ```
 
@@ -297,6 +300,7 @@ MMF 文档直接以 UTF-8 JSON 保存 MindElixir 数据结构，示例：
 | `themeTemplate` | 预设主题 ID（如 `auroraLight`、`clayLight` 等） |
 | `direction` | 布局：`0` 向左，`1` 向右，`2` 双侧 |
 | `lineStyle` | `curve` 流畅曲线 \| `straight` 简洁直线 \| `elbow` 圆角折线 \| `step` 阶梯折线 \| `branch` 经典下划线 |
+| `roundedImages` | `true` 开启节点图片圆角；默认 `false`。 |
 | `rainbowLines` | `true` 开启彩虹分支；默认 `false` 跟随主题。节点自定义的 `branchColor` 优先。 |
 | `backgroundPattern` | `none` 无 \| `dots` 点阵 \| `grid` 网格 \| `crossDot` 十字点 |
 

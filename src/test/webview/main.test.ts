@@ -118,6 +118,7 @@ const themeDomIds = [
     'direction-select',
     'line-style-select',
     'line-color-select',
+    'rounded-images',
     'bg-pattern-select',
     'bg-pattern-color',
     'bg-pattern-opacity',
@@ -236,6 +237,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 selectNode: sinon.spy(),
                 findEle: sinon.stub().returns(null),
                 container: {
+                    classList: createDomElement().classList,
                     focus: sinon.spy(),
                     addEventListener: sinon.spy(),
                     querySelector: sinon.stub().returns(null),

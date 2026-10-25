@@ -297,7 +297,10 @@ export class MindMapApp {
         this.exportToolbar = new ExportToolbar({
             getDocumentBaseName: () => this.documentBaseName,
             getExportData: () => this.buildExportPayload(),
-            exportPng: () => this.mind.exportPng.call(this.mind),
+            exportPng: () => this.mind.exportPng.call(this.mind, false,
+                this.themePanel.getSettings().roundedImages
+                    ? 'image { clip-path: inset(0 round 12px) fill-box; } img { border-radius: 12px; }'
+                    : undefined),
             postMessage: (message) => this.vscode.postMessage(message),
             onError: (message) => this.vscode.postMessage({ type: 'exportError', message }),
         });

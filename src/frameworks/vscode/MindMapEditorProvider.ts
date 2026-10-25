@@ -381,6 +381,15 @@ export class MindMapEditorProvider implements vscode.CustomTextEditorProvider {
 									</div>
 								</div>
 								<div class="panel-section">
+									<label class="panel-toggle" for="rounded-images">
+										<span>
+											<span class="panel-toggle-title">Rounded images</span>
+											<span class="panel-toggle-description">Apply to all node images</span>
+										</span>
+										<input id="rounded-images" type="checkbox" />
+									</label>
+								</div>
+								<div class="panel-section">
 									<label class="panel-toggle" for="auto-save-enabled">
 										<span>
 											<span class="panel-toggle-title">自动保存</span>

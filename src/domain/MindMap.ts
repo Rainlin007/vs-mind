@@ -34,6 +34,7 @@ export interface MindMapData {
     direction?: number;
     lineStyle?: 'curve' | 'elbow' | 'straight' | 'branch' | 'step';
     rainbowLines?: boolean;
+    roundedImages?: boolean;
 }
 
 export function createDefaultMindMapData(): MindMapData {
@@ -52,6 +53,7 @@ export function createDefaultMindMapData(): MindMapData {
         direction: 1,
         lineStyle: 'curve',
         rainbowLines: false,
+        roundedImages: false,
     };
 }
 
