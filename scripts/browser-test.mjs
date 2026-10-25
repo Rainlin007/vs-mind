@@ -170,7 +170,30 @@ try {
   await page.waitForNetworkIdle({ idleTime: 350 });
   await page.click(`${nodeSelector} .text strong`, { count: 2, delay: 60 });
   await page.waitForSelector('#input-box', { visible: true, timeout: 2000 });
+  const assertImageVisibleWhileEditing = async (selector = nodeSelector) => {
+    const state = await page.$eval(selector, node => {
+      const image = node.querySelector('img');
+      const editor = document.getElementById('input-box');
+      const text = node.querySelector('.text');
+      const imageRect = image.getBoundingClientRect();
+      const editorRect = editor.getBoundingClientRect();
+      const textRect = text.getBoundingClientRect();
+      return {
+        nodeOpacity: getComputedStyle(node).opacity,
+        imageVisible: image.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }),
+        belowImage: editorRect.top >= imageRect.bottom,
+        aligned: Math.abs(editorRect.left - textRect.left) < 2
+          && Math.abs(editorRect.top - textRect.top) < 2,
+      };
+    });
+    assert.equal(state.nodeOpacity, '1', 'editing must keep the image node opaque');
+    assert.equal(state.imageVisible, true, 'the image must remain visible while typing');
+    assert.equal(state.belowImage, true, 'the editor must not cover the image');
+    assert.equal(state.aligned, true, 'the editor must align with the title');
+  };
+  await assertImageVisibleWhileEditing();
   await page.keyboard.type('Updated image node');
+  await assertImageVisibleWhileEditing();
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
     const message = window.__TEST__.lastMessage;
@@ -190,11 +213,16 @@ try {
   assert.equal(await page.$eval(nodeSelector, el => el.classList.contains('selected')), true);
   await page.click(`${nodeSelector} .text`, { count: 2, delay: 60 });
   await page.waitForSelector('#input-box', { visible: true, timeout: 2000 });
+  await assertImageVisibleWhileEditing();
+  await page.keyboard.type('Cancelled title');
   await page.keyboard.press('Escape');
+  assert.equal(await page.$eval(`${nodeSelector} .text`, el => getComputedStyle(el).visibility), 'visible');
+  assert.equal(await page.$eval(nodeSelector, el => el.nodeObj.topic), 'Updated image node');
   result.logs.push({ ok: true, msg: 'image preview still opens and restores node selection and editing when closed' });
 
   await page.keyboard.press('F2');
   await page.waitForSelector('#input-box', { visible: true });
+  await assertImageVisibleWhileEditing();
   await page.keyboard.press('Backspace');
   await page.keyboard.press('Enter');
   await page.waitForSelector('#input-box', { hidden: true });
@@ -209,7 +237,52 @@ try {
   assert.equal(await page.$eval('#image-popup', el => el.style.display), 'flex');
   assert.equal(await page.$eval('#popup-img', el => el.src), originalImage);
   await page.click('#image-popup', { offset: { x: 10, y: 10 } });
+  await page.keyboard.press('F2');
+  await page.waitForSelector('#input-box', { visible: true });
+  await assertImageVisibleWhileEditing();
+  await page.keyboard.type('Restored title');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.$eval(`${nodeSelector} .text`, el => el.textContent), 'Restored title');
+  assert.equal(await page.$eval(`${nodeSelector} .text`, el => getComputedStyle(el).visibility), 'visible');
   result.logs.push({ ok: true, msg: 'clearing an image node title saves empty text and retains the image and its original' });
+
+  // Exercise offset parents and scaled coordinates on both root and child nodes.
+  for (const direction of [0, 1, 2]) {
+    await page.evaluate(({ image, direction }) => window.postMessage({
+      type: 'update',
+      text: JSON.stringify({
+        nodeData: {
+          id: 'image-edit', topic: 'Root title', root: true, image,
+          children: [{ id: 'image-edit-child', topic: 'Child title', image }],
+        },
+        direction,
+      }),
+      images: {},
+    }, '*'), { image: nodeImage, direction });
+    const childSelector = '[data-nodeid="meimage-edit-child"]';
+    await page.waitForSelector(childSelector);
+    const beforeZoom = await page.$eval(`${nodeSelector} > img`, el => {
+      const rect = el.getBoundingClientRect();
+      return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, width: rect.width };
+    });
+    await page.mouse.move(beforeZoom.x, beforeZoom.y);
+    await page.keyboard.down('Control');
+    await page.mouse.wheel({ deltaY: 150 });
+    await page.keyboard.up('Control');
+    await page.waitForFunction(width => {
+      const image = document.querySelector('[data-nodeid="meimage-edit"] > img');
+      return Math.abs(image.getBoundingClientRect().width - width) > 1;
+    }, {}, beforeZoom.width);
+    for (const selector of [nodeSelector, childSelector]) {
+      await page.click(`${selector} .text`);
+      await page.keyboard.press('F2');
+      await page.waitForSelector('#input-box', { visible: true });
+      await assertImageVisibleWhileEditing(selector);
+      await page.keyboard.press('Escape');
+      assert.equal(await page.$eval(`${selector} .text`, el => getComputedStyle(el).visibility), 'visible');
+    }
+  }
+  result.logs.push({ ok: true, msg: 'image nodes stay visible with aligned text editors across layouts and canvas zoom' });
 } catch (error) {
   result.passed = false;
   result.logs.push({ ok: false, msg: `image node editing: ${error.message}` });
