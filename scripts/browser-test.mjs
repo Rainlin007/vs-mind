@@ -1126,6 +1126,32 @@ try {
       {}, data.roundedImages === true);
   };
   const radii = () => page.$$eval('me-tpc > img', images => images.map(image => getComputedStyle(image).borderTopLeftRadius));
+  const assertBoxSelection = async label => {
+    await page.click('#fit-view');
+    const bounds = await page.$$eval('me-tpc', nodes => {
+      const rects = nodes.map(node => node.getBoundingClientRect());
+      return { left: Math.min(...rects.map(rect => rect.left)) - 12,
+        top: Math.min(...rects.map(rect => rect.top)) - 12,
+        right: Math.max(...rects.map(rect => rect.right)) + 12,
+        bottom: Math.max(...rects.map(rect => rect.bottom)) + 12 };
+    });
+    assert.equal(await page.evaluate(({ left, top }) => document.elementFromPoint(left, top)
+      === document.querySelector('.map-container'), bounds), true, `${label}: drag must start on empty canvas`);
+    await page.mouse.move(bounds.left, bounds.top);
+    await page.mouse.down();
+    try {
+      await page.mouse.move(bounds.right, bounds.bottom, { steps: 15 });
+      assert.equal(await page.$eval('.selection-area', area => {
+        const rect = area.getBoundingClientRect();
+        return rect.width > 20 && rect.height > 20 && getComputedStyle(area).visibility !== 'hidden';
+      }), true, `${label}: dragging must show a selection rectangle`);
+    } finally {
+      await page.mouse.up();
+    }
+    assert.deepEqual(await page.$$eval('me-tpc.selected', nodes => nodes.map(node => node.nodeObj.id).sort()),
+      ['rounded-child', 'rounded-root'], `${label}: dragging must select every enclosed node`);
+    await page.mouse.click(bounds.left, bounds.top);
+  };
   const exportData = async format => {
     await page.evaluate(format => {
       window.__TEST__.lastMessage = null;
@@ -1158,11 +1184,14 @@ try {
   await load(data);
   await page.click('#panel-tab-theme');
   assert.deepEqual(await radii(), ['0px', '0px'], 'existing documents keep square images by default');
+  await assertBoxSelection('square images');
+  await page.click('#panel-tab-theme');
   const squarePixels = await countImagePixels();
   assert.ok(squarePixels > 18000, 'PNG must contain both complete images');
   await page.click('#rounded-images');
   assert.deepEqual(await radii(), ['12px', '12px']);
   assert.equal(await page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text).roundedImages), true);
+  await assertBoxSelection('rounded images');
   const roundedPixels = await countImagePixels();
   assert.ok(roundedPixels < squarePixels - 100 && roundedPixels > squarePixels * 0.9,
     `PNG must clip image corners while preserving the image contents: ${squarePixels} -> ${roundedPixels}`);
@@ -1173,6 +1202,7 @@ try {
   await page.waitForFunction(() => window.__TEST__?.done === true);
   await load(saved);
   assert.deepEqual(await radii(), ['12px', '12px'], 'reopening the document restores rounded images');
+  await assertBoxSelection('reopened rounded images');
   await page.click('[data-nodeid="merounded-child"] .text');
   await page.click('#action-focus');
   assert.deepEqual(await radii(), ['12px'], 'focused branches retain rounded images');
@@ -1181,11 +1211,14 @@ try {
   await page.click('#rounded-images');
   assert.deepEqual(await radii(), ['0px', '0px']);
   assert.equal(await page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text).roundedImages), false);
+  await assertBoxSelection('rounding disabled');
   assert.equal(await countImagePixels(), squarePixels, 'disabling rounding restores square PNG images');
+  await page.click('#panel-tab-theme');
   await page.click('#rounded-images');
   await load(data);
   assert.deepEqual(await radii(), ['0px', '0px'], 'loading a document without the setting clears the previous rounding');
   result.logs.push({ ok: true, msg: 'Global rounded images toggle applies to all images, persists through MMF reload/focus, clips PNG corners and resets for older documents without altering image data' });
+  result.logs.push({ ok: true, msg: 'Dragging on blank canvas displays a selection rectangle and selects all enclosed nodes with rounded images enabled, disabled and after reopening' });
 } catch (error) {
   result.passed = false;
   result.logs.push({ ok: false, msg: `rounded images: ${error.stack}` });

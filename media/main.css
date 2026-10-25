@@ -507,7 +507,7 @@ body {
     cursor: zoom-in;
 }
 
-.map-container.rounded-images me-tpc img {
+.map-container[data-rounded-images="true"] me-tpc img {
     border-radius: 12px;
 }
 

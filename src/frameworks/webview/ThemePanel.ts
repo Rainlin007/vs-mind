@@ -267,7 +267,9 @@ export class ThemePanel {
     }
 
     private applyImageStyle(): void {
-        this.mind.container.classList.toggle('rounded-images', this.settings.roundedImages);
+        // MindElixir's box selection requires className === 'map-container'.
+        // Store visual settings separately so they do not disable pointer selection.
+        this.mind.container.setAttribute('data-rounded-images', String(this.settings.roundedImages));
     }
 }
 
