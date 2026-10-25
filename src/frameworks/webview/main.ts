@@ -14,6 +14,7 @@ import { NodeNoteTooltip } from './NodeNoteTooltip';
 import { setupNodeClipboard } from './nodeClipboard';
 import { setupNodeTextEditing } from './nodeTextEditing';
 import { ImageResizeControl } from './ImageResizeControl';
+import { CanvasToolbar, type CanvasToolbarHost } from './CanvasToolbar';
 
 interface VSCodeApi {
     postMessage(message: unknown): void;
@@ -23,7 +24,7 @@ interface VSCodeApi {
 
 declare function acquireVsCodeApi(): VSCodeApi;
 
-interface MindElixirInstance {
+interface MindElixirInstance extends CanvasToolbarHost {
     init(data: MindElixirData): void;
     refresh(data?: MindElixirData): void;
     getData(): MindElixirData;
@@ -33,6 +34,8 @@ interface MindElixirInstance {
     initSide(): void;
     linkDiv(): void;
     move(dx: number, dy: number): void;
+    scale(value: number): void;
+    scaleFit(): void;
     direction: number;
     theme: Theme;
     generateMainBranch: unknown;
@@ -238,6 +241,7 @@ export class MindMapApp {
     private sidePanel: SidePanel;
     private autoSaveCheckbox: HTMLInputElement | null;
     private exportToolbar: ExportToolbar;
+    private canvasToolbar: CanvasToolbar;
     private noteTooltip: NodeNoteTooltip;
     private documentBaseName = 'mindmap';
     private mindInitialized = false;
@@ -299,6 +303,10 @@ export class MindMapApp {
         });
 
         this.noteTooltip = new NodeNoteTooltip(this.mind.container);
+        this.canvasToolbar = new CanvasToolbar(this.mind, () => {
+            this.themePanel.reapplyLineStyle();
+            this.noteTooltip.syncNoteMarkers();
+        });
         new ImageResizeControl(this.mind);
 
         this.setupImagePaste();
@@ -315,7 +323,37 @@ export class MindMapApp {
             this.saveChanges();
         });
         this.themePanel.markMindReady();
+        this.canvasToolbar.initialize();
+        this.setupFitToView();
         this.noteTooltip.syncNoteMarkers();
+    }
+
+    private setupFitToView(): void {
+        const button = this.mind.container.querySelector<HTMLElement>('#fullscreen');
+        if (!button) return;
+        button.id = 'fit-view';
+        button.title = 'Fit to view';
+        button.setAttribute('aria-label', 'Fit to view');
+        button.setAttribute('role', 'button');
+        button.tabIndex = 0;
+        // Fullscreen is not useful inside a VS Code webview. Fit the visible map
+        // to the available canvas instead, including the library's edge padding.
+        button.onclick = () => {
+            document.getElementById('input-box')?.blur();
+            this.mind.map.style.transition = 'none';
+            this.mind.scaleFit();
+            // scaleFit uses the whole-map origin, while manual zoom uses the
+            // configured alignment (root by default). Switch back at the same
+            // scale and compensate the translation so the fitted view stays put.
+            runWithViewportPreserved(this.mind, () => this.mind.scale(this.mind.scaleVal));
+            this.mind.container.focus({ preventScroll: true });
+        };
+        button.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            event.stopPropagation();
+            button.click();
+        });
     }
 
     private buildExportPayload() {
@@ -430,6 +468,7 @@ export class MindMapApp {
         }
 
         this.mind.bus.addListener('operation', (operation: any) => this.handleOperation(operation));
+        this.mind.bus.addListener('expandNode', () => this.saveChanges());
 
         this.mind.bus.addListener('selectNodes', () => {
             this.sidePanel.switchTab('node');

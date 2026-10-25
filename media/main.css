@@ -30,12 +30,68 @@ body {
     display: flex;
     align-items: center;
     height: 35px;
-    padding: 0 8px;
+    padding: 0 6px;
     gap: 2px;
     background: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-editor-background));
     border-bottom: 1px solid var(--vscode-editorGroupHeader-tabsBorder, var(--vscode-sideBar-border));
     flex-shrink: 0;
+    position: relative;
 }
+
+.canvas-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+}
+
+.canvas-actions .toolbar-group + .toolbar-group {
+    border-left: 1px solid var(--vscode-sideBar-border, rgba(128, 128, 128, .25));
+    padding-left: 3px;
+}
+
+.map-toolbar > .toolbar-group:last-child {
+    margin-left: 1px;
+    border-left: 1px solid var(--vscode-sideBar-border, rgba(128, 128, 128, .25));
+    padding-left: 3px;
+}
+
+.canvas-action {
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.canvas-action[aria-pressed="true"] {
+    color: var(--vscode-focusBorder, #4c88f7);
+    background: var(--vscode-toolbar-activeBackground, rgba(128, 128, 128, .15));
+}
+
+.canvas-action:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder, #4c88f7);
+    outline-offset: 1px;
+}
+
+.fold-plus { display: none; }
+.is-collapsed .fold-plus { display: initial; }
+
+.toolbar-status {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 32;
+    padding: 6px 10px;
+    border-radius: 5px;
+    color: var(--vscode-editorWidget-foreground, #334155);
+    background: var(--vscode-editorWidget-background, #fff);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.toolbar-status:empty { display: none; }
+.map-canvas.is-connecting me-tpc { cursor: crosshair; }
 
 .toolbar-group {
     display: flex;
@@ -48,7 +104,7 @@ body {
     align-items: center;
     gap: 4px;
     height: 22px;
-    padding: 0 8px;
+    padding: 0 4px;
     border: none;
     border-radius: 5px;
     background: transparent;
@@ -424,6 +480,15 @@ body {
 /* Hide MindElixir left layout toolbar — controls moved to theme panel */
 .mind-elixir-toolbar.lt {
     display: none !important;
+}
+
+#fit-view {
+    cursor: pointer;
+}
+
+#fit-view:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder, #4c88f7);
+    outline-offset: 3px;
 }
 
 .map-container me-parent me-epd {

@@ -843,6 +843,269 @@ try {
   result.passed = false;
   result.logs.push({ ok: false, msg: `document viewport preservation: ${error.message}` });
 }
+try {
+  const original = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9WlOkAAAAASUVORK5CYII=';
+  await page.evaluate(original => window.postMessage({
+    type: 'update',
+    text: JSON.stringify({
+      nodeData: { id: 'tools-root', topic: '工具栏验证', root: true, children: [
+        { id: 'tools-a', topic: '产品设计', children: [
+          { id: 'tools-a1', topic: '用户调研' },
+          { id: 'tools-a2', topic: '交互设计' },
+          { id: 'tools-a3', topic: '视觉设计' },
+        ] },
+        { id: 'tools-b', topic: '开发实施', image: { url: original, width: 40, height: 40 } },
+      ] },
+      direction: 0,
+    }),
+    images: { 'tools-b': original },
+  }, '*'), original);
+  const topic = id => `[data-nodeid="me${id}"]`;
+  await page.waitForSelector(topic('tools-root'));
+  const disabled = id => page.$eval(`#action-${id}`, button => button.disabled);
+  const saved = () => page.evaluate(() => JSON.parse(window.__TEST__.lastMessage.text));
+  const settle = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert.equal(await disabled('child'), true);
+  assert.equal(await disabled('undo'), true);
+  await page.click(topic('tools-root'));
+  assert.equal(await disabled('sibling'), true);
+  assert.equal(await disabled('focus'), true);
+  await page.click(topic('tools-a'));
+  await page.click('#action-fold');
+  assert.equal(await page.$(topic('tools-a1')), null);
+  assert.equal((await saved()).nodeData.children[0].expanded, false);
+  assert.equal(await page.$eval('#action-fold', button => button.getAttribute('aria-label')), 'Expand branch');
+  await page.click('#action-fold');
+  await page.waitForSelector(topic('tools-a1'));
+
+  await page.click('#action-child');
+  await page.waitForSelector('#input-box');
+  await page.keyboard.type('New child');
+  await page.keyboard.press('Enter');
+  const addedId = (await saved()).nodeData.children[0].children.at(-1).id;
+  assert.equal(await disabled('undo'), false);
+  await page.click('#action-undo'); // undo title edit
+  await page.click('#action-undo'); // undo creation
+  assert.equal(await page.$(topic(addedId)), null);
+  await page.click('#action-redo');
+  await page.click('#action-redo');
+  assert.equal(await page.$eval(topic(addedId), node => node.nodeObj.topic), 'New child');
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.focus('.map-container');
+  await page.keyboard.down(modifier);
+  await page.keyboard.press('z');
+  await page.keyboard.up(modifier);
+  assert.equal(await disabled('redo'), false);
+  await page.click('#action-redo');
+  assert.equal(await page.$eval(topic(addedId), node => node.nodeObj.topic), 'New child');
+  await page.click(topic('tools-a1'));
+  await page.click('#action-sibling');
+  await page.waitForSelector('#input-box');
+  await page.keyboard.type('New sibling');
+  await page.keyboard.press('Enter');
+  assert.equal((await saved()).nodeData.children[0].children[1].topic, 'New sibling');
+  result.logs.push({ ok: true, msg: 'toolbar fold/unfold persists; child/sibling creation and keyboard/button undo/redo share history' });
+
+  await page.click(topic('tools-a'));
+  const beforeFocus = await page.$eval(topic('tools-a'), node => {
+    const rect = node.getBoundingClientRect();
+    return { x: rect.x, y: rect.y };
+  });
+  await page.click('#action-focus');
+  assert.equal(await page.$('me-root > [data-nodeid="metools-root"]'), null);
+  assert.notEqual(await page.$('me-root > [data-nodeid="metools-a"]'), null);
+  assert.equal(await page.$(topic('tools-b')), null);
+  assert.equal(await page.$eval('#action-focus', button => button.getAttribute('aria-label')), 'Exit focus');
+  await page.click(topic('tools-a1'));
+  await page.keyboard.press('F2');
+  await page.waitForSelector('#input-box');
+  await page.keyboard.type('Edited in focus');
+  await page.keyboard.press('Enter');
+  assert.equal((await saved()).nodeData.id, 'tools-root');
+  assert.equal((await saved()).nodeData.children[1].id, 'tools-b');
+  assert.equal(await page.evaluate(() => window.__TEST__.lastMessage.images['tools-b']), original);
+  await page.click('#action-undo');
+  assert.equal(await page.$eval(topic('tools-a1'), node => node.nodeObj.topic), '用户调研');
+  assert.notEqual(await page.$('me-root > [data-nodeid="metools-a"]'), null);
+  await page.click('#action-redo');
+  assert.equal((await saved()).nodeData.children[0].children[0].topic, 'Edited in focus');
+  await page.click('#action-focus');
+  await page.waitForSelector(topic('tools-b'));
+  const afterFocus = await page.$eval(topic('tools-a'), node => {
+    const rect = node.getBoundingClientRect();
+    return { x: rect.x, y: rect.y };
+  });
+  assert.ok(Math.abs(afterFocus.x - beforeFocus.x) < 2 && Math.abs(afterFocus.y - beforeFocus.y) < 2);
+  result.logs.push({ ok: true, msg: 'focus mode preserves the full document and images across edits/undo/redo and restores the original viewport on exit' });
+
+  await page.click(topic('tools-a1'));
+  await page.click('#action-relationship');
+  assert.equal(await page.$eval('#action-relationship', button => button.getAttribute('aria-pressed')), 'true');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.$eval('#action-relationship', button => button.getAttribute('aria-pressed')), 'false');
+  await page.click('#action-relationship');
+  await page.click(topic('tools-a2'));
+  assert.deepEqual((await saved()).arrows.map(arrow => [arrow.from, arrow.to]), [['tools-a1', 'tools-a2']]);
+  await page.click('#action-undo');
+  assert.equal((await saved()).arrows.length, 0);
+  await page.click('#action-redo');
+  await page.click(topic('tools-a2'));
+  await page.keyboard.down(modifier);
+  await page.click(topic('tools-a3'));
+  await page.keyboard.up(modifier);
+  await page.click('#action-relationship');
+  assert.equal((await saved()).arrows.length, 2);
+  await page.click('#action-summary');
+  await page.waitForSelector('#input-box');
+  await page.keyboard.type('Design phase');
+  await page.keyboard.press('Enter');
+  const summary = (await saved()).summaries[0];
+  assert.equal(summary.parent, 'tools-a');
+  assert.equal(summary.label, 'Design phase');
+  assert.equal(summary.end - summary.start, 1);
+  await page.click(topic('tools-a1'));
+  await page.keyboard.down(modifier);
+  await page.click(topic('tools-a3'));
+  await page.keyboard.up(modifier);
+  assert.equal(await disabled('summary'), true, 'non-adjacent siblings must not silently include unselected nodes');
+  result.logs.push({ ok: true, msg: 'toolbar connections support two-node selection or target picking with Escape cancellation; summaries validate contiguous siblings' });
+
+  await page.click(topic('tools-a'));
+  await page.click('#action-focus');
+  const update = await saved();
+  update.nodeData.children[0].children[0].topic = 'External update in focus';
+  await page.evaluate(({ data, original }) => window.postMessage({
+    type: 'update', text: JSON.stringify(data), images: { 'tools-b': original },
+  }, '*'), { data: update, original });
+  await page.waitForFunction(() => document.querySelector('[data-nodeid="metools-a1"]')?.nodeObj.topic === 'External update in focus');
+  assert.notEqual(await page.$('me-root > [data-nodeid="metools-a"]'), null);
+  await page.click('#action-focus');
+  await page.waitForSelector(topic('tools-b'));
+  await page.click(topic('tools-a'));
+  await settle();
+  if (process.env.TOOLBAR_SCREENSHOT_PATH) await page.screenshot({ path: process.env.TOOLBAR_SCREENSHOT_PATH });
+  await page.setViewport({ width: 800, height: 700 });
+  await settle();
+  assert.equal(await page.$$eval('.canvas-action', buttons => buttons.every(button => button.textContent.trim() === '' && !!button.title)), true);
+  assert.equal(await page.$eval('.map-toolbar', toolbar => toolbar.scrollWidth <= toolbar.clientWidth), true);
+  result.logs.push({ ok: true, msg: 'external updates keep focus attached to the current full document; compact toolbars remain usable in narrow editors' });
+} catch (error) {
+  result.passed = false;
+  result.logs.push({ ok: false, msg: `canvas toolbar: ${error.stack}` });
+}
+try {
+  await page.$eval('#debug-bar', bar => { bar.style.display = 'none'; });
+  const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9WlOkAAAAASUVORK5CYII=';
+  const data = {
+    nodeData: { id: 'fit-root', topic: 'Fit the whole map', root: true, children:
+      Array.from({ length: 18 }, (_, index) => ({
+        id: `fit-${index}`, topic: `Branch ${index}`, direction: index % 2,
+        ...(index === 0 ? { image: { url: image, width: 640, height: 320 } } : {}),
+        children: Array.from({ length: 4 }, (_, child) => ({
+          id: `fit-${index}-${child}`, topic: `Detailed topic ${index}.${child}`,
+        })),
+      })) },
+    direction: 2,
+  };
+  const assertFits = async () => {
+    const geometry = await page.evaluate(() => {
+      const container = document.querySelector('.map-container').getBoundingClientRect();
+      const rects = [...document.querySelectorAll('me-tpc, me-tpc > img')].map(node => node.getBoundingClientRect());
+      const map = document.querySelector('.map-canvas');
+      return {
+        contained: rects.every(rect => rect.left >= container.left + 1 && rect.top >= container.top + 1
+          && rect.right <= container.right - 1 && rect.bottom <= container.bottom - 1),
+        bounds: [Math.min(...rects.map(rect => rect.left)), Math.min(...rects.map(rect => rect.top)),
+          Math.max(...rects.map(rect => rect.right)), Math.max(...rects.map(rect => rect.bottom))],
+        canvas: [container.left, container.top, container.right, container.bottom],
+        transform: map.style.transform,
+        fullscreen: !!document.fullscreenElement,
+      };
+    });
+    assert.equal(geometry.contained, true, `every visible topic and image must fit inside the canvas: ${JSON.stringify(geometry)}`);
+    assert.equal(geometry.fullscreen, false, 'fit must not enter browser fullscreen');
+    return geometry.transform;
+  };
+  assert.equal(await page.$('#fullscreen'), null);
+  assert.equal(await page.$eval('#fit-view', button => button.title), 'Fit to view');
+  const zoomGeometry = () => page.evaluate(() => {
+    const canvas = document.querySelector('.map-container').getBoundingClientRect();
+    const node = document.querySelector('me-root > me-tpc').getBoundingClientRect();
+    return {
+      x: node.left + node.width / 2, y: node.top + node.height / 2, width: node.width,
+      center: { x: canvas.left + canvas.width / 2, y: canvas.top + canvas.height / 2 },
+      pointer: { x: canvas.left + canvas.width * 0.3, y: canvas.top + canvas.height * 0.4 },
+    };
+  });
+  const assertZoomAnchor = async (before, anchor, label) => {
+    const after = await zoomGeometry();
+    const ratio = after.width / before.width;
+    assert.ok(ratio > 1, `${label}: zoom must increase`);
+    const expected = { x: anchor.x + (before.x - anchor.x) * ratio,
+      y: anchor.y + (before.y - anchor.y) * ratio };
+    assert.ok(Math.abs(after.x - expected.x) < 1 && Math.abs(after.y - expected.y) < 1,
+      `${label}: zoom must preserve its screen anchor: ${JSON.stringify({ before, after, expected })}`);
+  };
+  const assertZoomAfterFit = async () => {
+    const beforeButton = await zoomGeometry();
+    await page.click('#zoomin');
+    await assertZoomAnchor(beforeButton, beforeButton.center, 'button after fit');
+    await page.click('#fit-view');
+    const beforeWheel = await zoomGeometry();
+    await page.mouse.move(beforeWheel.pointer.x, beforeWheel.pointer.y);
+    await page.keyboard.down('Control');
+    try {
+      await page.mouse.wheel({ deltaY: -100 });
+      await page.waitForFunction(width => document.querySelector('me-root > me-tpc').getBoundingClientRect().width > width,
+        {}, beforeWheel.width);
+    } finally {
+      await page.keyboard.up('Control');
+    }
+    await assertZoomAnchor(beforeWheel, beforeWheel.pointer, 'wheel after fit');
+    await page.click('#fit-view');
+    await assertFits();
+  };
+  for (const direction of [0, 1, 2]) {
+    data.direction = direction;
+    await page.evaluate(data => window.postMessage({ type: 'update', text: JSON.stringify(data), images: {} }, '*'), data);
+    await page.waitForSelector('[data-nodeid="mefit-17-3"]');
+    await page.waitForFunction(direction => document.getElementById('direction-select').value === String(direction), {}, direction);
+    await page.$eval('.map-canvas', map => {
+      map.style.transform = map.style.transform.replace(/translate3d\(([-\d.]+)px,\s*([-\d.]+)px/,
+        (_, x, y) => `translate3d(${Number(x) + 900}px, ${Number(y) - 600}px`);
+    });
+    const before = await page.evaluate(() => JSON.stringify(window.__TEST__.lastMessage));
+    await page.click('#fit-view');
+    const transform = await assertFits();
+    await page.click('#fit-view');
+    assert.equal(await assertFits(), transform, 'fitting again must not drift or change zoom');
+    await assertZoomAfterFit();
+    assert.equal(await page.evaluate(() => JSON.stringify(window.__TEST__.lastMessage)), before,
+      'fitting the viewport must not modify or save the document');
+  }
+  await page.click('[data-nodeid="mefit-0"] .text');
+  assert.equal(await page.$eval('[data-nodeid="mefit-0"]', node => node.classList.contains('selected')), true);
+  assert.equal(await page.$eval('#action-focus', button => button.disabled), false);
+  await page.click('#action-focus');
+  await page.click('#fit-view');
+  await assertFits();
+  await assertZoomAfterFit();
+  assert.equal(await page.$('[data-nodeid="mefit-17"]'), null);
+  await page.click('#action-focus');
+  await page.setViewport({ width: 700, height: 500 });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.focus('#fit-view');
+  await page.keyboard.press('Enter');
+  await assertFits();
+  await assertZoomAfterFit();
+  assert.equal(await page.$$eval('me-tpc', nodes => nodes.length), 91,
+    'keyboard activation must not add a sibling node');
+  result.logs.push({ ok: true, msg: 'Fit to view replaces fullscreen, fits large image maps in every layout, supports focus and narrow canvases, and leaves document data unchanged' });
+  result.logs.push({ ok: true, msg: 'Manual zoom after fit preserves the canvas center for buttons and the pointer position for wheel zoom, across all layouts, focus and narrow canvases' });
+} catch (error) {
+  result.passed = false;
+  result.logs.push({ ok: false, msg: `fit to view: ${error.stack}` });
+}
 const logs = result.logs.map((l) => `${l.ok ? '✓' : '✗'} ${l.msg}`).join('\n');
 
 console.log('\n--- Browser test ---');

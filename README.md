@@ -48,7 +48,7 @@ Press **F5** in VS Code to launch the Extension Development Host, then open or c
 ## Usage
 
 1. Open a `.mmf` file — VS Code opens it with the mind map editor automatically.
-2. Use the **canvas toolbar** (right side of the map) for node operations: add child/sibling, delete, etc.
+2. Use the **top toolbar** to fold/unfold a branch, add child/sibling nodes, enter/leave focus mode, undo/redo, add relationships or summaries, and export. Buttons use icons with English tooltips; hover to see the action and any keyboard shortcut. **Fit to view**, zoom and recenter controls are at the bottom-right. Fit to view scales and centers the visible map to fit the available canvas.
 3. Open the **property panel** via the sidebar icon in the editor title bar (top-right).
 4. In the **Node** tab, select a node to edit its style, note, and optional AI note.
 5. In the **Global** tab, change color scheme, layout direction, line style, and background pattern.
@@ -72,6 +72,10 @@ node skills/mmf-format/scripts/mmf-to-markdown.mjs plan.mmf --output context.md
 - **Shift + Enter** — Insert a line break while editing (Enter finishes editing)
 - **Ctrl/Cmd + C** — Copy selected nodes and their descendants
 - **Ctrl/Cmd + V** — Paste copied nodes under the selected node, or paste an image into it
+- **Ctrl/Cmd + Z / Ctrl/Cmd + Shift + Z** — Undo / redo (shared with the toolbar buttons)
+- **Relationship** — Select two nodes and click the toolbar button, or select one node, click the button, then click the target. Press **Esc** to cancel target selection.
+- **Summary** — Select a node or consecutive siblings on the same branch, then click the toolbar button and enter the summary text.
+- **Focus branch** — Show the selected branch while retaining the complete document. **Exit focus** returns to the previous canvas position.
 
 ## Development
 

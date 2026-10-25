@@ -3,7 +3,7 @@
  * screen position for the anchor node (selected node, else root) and restore pan/zoom.
  */
 
-interface ViewportSnapshot {
+export interface ViewportSnapshot {
     transform: string;
     scaleVal: number;
     anchorNodeId: string | null;
@@ -34,7 +34,7 @@ function findAnchorElement(mind: ViewportPreservingMind, nodeId: string | null):
     return mind.map.querySelector('me-root > me-tpc');
 }
 
-function captureViewport(mind: ViewportPreservingMind): ViewportSnapshot | null {
+export function captureViewport(mind: ViewportPreservingMind): ViewportSnapshot | null {
     if (!mind.map) {
         return null;
     }
@@ -57,7 +57,7 @@ function captureViewport(mind: ViewportPreservingMind): ViewportSnapshot | null 
     return snapshot;
 }
 
-function restoreViewport(mind: ViewportPreservingMind, snapshot: ViewportSnapshot): void {
+export function restoreViewport(mind: ViewportPreservingMind, snapshot: ViewportSnapshot): void {
     mind.map.style.transform = snapshot.transform;
     mind.scaleVal = snapshot.scaleVal;
 

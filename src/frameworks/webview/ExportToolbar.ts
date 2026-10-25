@@ -110,7 +110,7 @@ export class ExportToolbar {
             if (format === 'png') {
                 const blob = await this.deps.exportPng();
                 if (!blob) {
-                    this.deps.onError('PNG 导出失败，请重试。');
+                    this.deps.onError('PNG export failed. Please try again.');
                     return;
                 }
                 this.deps.postMessage({
@@ -152,7 +152,7 @@ export class ExportToolbar {
             });
         } catch (error) {
             console.error('Export failed:', error);
-            this.deps.onError('导出失败，请重试。');
+            this.deps.onError('Export failed. Please try again.');
         } finally {
             this.exporting = false;
             if (this.trigger) {

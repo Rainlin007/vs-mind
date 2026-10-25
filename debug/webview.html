@@ -30,26 +30,45 @@
 <body>
   <div class="main-content">
     <div class="workspace-column">
-      <header class="map-toolbar" role="toolbar" aria-label="导出">
-        <div class="toolbar-group">
-          <div class="export-dropdown">
-            <button id="export-trigger" class="toolbar-btn export-trigger" type="button" title="导出" aria-haspopup="menu" aria-expanded="false" aria-label="导出">
-              <span class="toolbar-icon" aria-hidden="true">
-                <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8.5 1.5a.5.5 0 0 0-1 0v7.793L5.354 7.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 9.293V1.5zM2 12.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>
-              </span>
-              <span class="toolbar-chevron" aria-hidden="true">
-                <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M4.5 6.5 8 10l3.5-3.5L12 7.5 8 11.5 4 7.5l.5-1z"/></svg>
-              </span>
-            </button>
-            <div id="export-menu" class="export-menu hidden" role="menu" aria-label="导出格式">
-              <button class="export-menu-item" type="button" data-export="png" role="menuitem">PNG</button>
-              <button class="export-menu-item" type="button" data-export="mmf" role="menuitem">MMF</button>
-              <button class="export-menu-item" type="button" data-export="markdown" role="menuitem">Markdown</button>
-              <button class="export-menu-item" type="button" data-export="plaintext" role="menuitem">Plaintext</button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <header class="map-toolbar" role="toolbar" aria-label="Mind map toolbar">
+                        <div id="canvas-actions" class="canvas-actions">
+    <div class="toolbar-group"><button id="action-fold" class="toolbar-btn canvas-action" type="button" disabled
+        title="Collapse branch" aria-label="Collapse branch">
+        <span class="toolbar-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5 8h6"/><path class="fold-plus" d="M8 5v6"/></svg></span></button></div>
+    <div class="toolbar-group"><button id="action-child" class="toolbar-btn canvas-action" type="button" disabled
+        title="Add child (Tab)" aria-label="Add child">
+        <span class="toolbar-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="1" y="2" width="5" height="4" rx="1"/><path d="M3.5 6v5H8m3-3v6m-3-3h6"/></svg></span></button><button id="action-sibling" class="toolbar-btn canvas-action" type="button" disabled
+        title="Add sibling (Enter)" aria-label="Add sibling">
+        <span class="toolbar-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="6" y="1" width="7" height="4" rx="1"/><path d="M6 3H3v9h3m4-3v6m-3-3h6"/></svg></span></button></div>
+    <div class="toolbar-group"><button id="action-focus" class="toolbar-btn canvas-action" type="button" disabled
+        title="Focus branch" aria-label="Focus branch">
+        <span class="toolbar-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M6 2H2v4m8-4h4v4M2 10v4h4m4 0h4v-4"/><circle cx="8" cy="8" r="2.5"/></svg></span></button></div>
+    <div class="toolbar-group"><button id="action-undo" class="toolbar-btn canvas-action" type="button" disabled
+        title="Undo (Ctrl/Cmd+Z)" aria-label="Undo">
+        <span class="toolbar-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M6 3 2 7l4 4M2 7h7a4 4 0 0 1 4 4v2"/></svg></span></button><button id="action-redo" class="toolbar-btn canvas-action" type="button" disabled
+        title="Redo (Ctrl/Cmd+Shift+Z)" aria-label="Redo">
+        <span class="toolbar-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="m10 3 4 4-4 4m4-4H7a4 4 0 0 0-4 4v2"/></svg></span></button></div>
+    <div class="toolbar-group"><button id="action-relationship" class="toolbar-btn canvas-action" type="button" disabled
+        title="Relationship" aria-label="Relationship">
+        <span class="toolbar-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="1" y="9" width="4" height="4" rx="1"/><rect x="11" y="3" width="4" height="4" rx="1"/><path d="M5 11h2a2 2 0 0 0 2-2V7a2 2 0 0 1 2-2m-3-2 3 2-3 2"/></svg></span></button><button id="action-summary" class="toolbar-btn canvas-action" type="button" disabled
+        title="Summary" aria-label="Summary">
+        <span class="toolbar-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M2 3h4M2 8h4m-4 5h4m2-11h2v12H8m2-6h4"/></svg></span></button></div>
+    </div><span id="toolbar-status" class="toolbar-status" role="status" aria-live="polite"></span>
+						<div class="toolbar-group">
+							<div class="export-dropdown">
+								<button id="export-trigger" class="toolbar-btn export-trigger" type="button" title="Export" aria-haspopup="menu" aria-expanded="false" aria-label="Export">
+									<span class="toolbar-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8.5 1.5a.5.5 0 0 0-1 0v7.793L5.354 7.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 9.293V1.5zM2 12.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg></span>
+									<span class="toolbar-chevron" aria-hidden="true"><svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M4.5 6.5 8 10l3.5-3.5L12 7.5 8 11.5 4 7.5l.5-1z"/></svg></span>
+								</button>
+								<div id="export-menu" class="export-menu hidden" role="menu" aria-label="Export format">
+									<button class="export-menu-item" type="button" data-export="png" role="menuitem">PNG</button>
+									<button class="export-menu-item" type="button" data-export="mmf" role="menuitem">MMF</button>
+									<button class="export-menu-item" type="button" data-export="markdown" role="menuitem">Markdown</button>
+									<button class="export-menu-item" type="button" data-export="plaintext" role="menuitem">Plaintext</button>
+								</div>
+							</div>
+						</div>
+					</header>
       <div class="map-area">
         <div id="bgPatternOverlay" class="bg-pattern-overlay"></div>
         <div id="mindmap"></div>

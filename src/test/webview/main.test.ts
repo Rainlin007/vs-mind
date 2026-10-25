@@ -238,6 +238,7 @@ describe('Webview Refactoring Tests (TypeScript)', () => {
                 container: {
                     focus: sinon.spy(),
                     addEventListener: sinon.spy(),
+                    querySelector: sinon.stub().returns(null),
                     querySelectorAll: sinon.stub().returns([])
                 }
             });
