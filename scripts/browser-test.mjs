@@ -164,6 +164,51 @@ try {
   // Wait for the image to finish loading before editing the node.
   await page.waitForNetworkIdle({ idleTime: 100 });
 
+  await page.click(`${nodeSelector} > img`);
+  await page.waitForNetworkIdle({ idleTime: 350 });
+  assert.equal(await page.$eval(nodeSelector, el => el.classList.contains('selected')), true,
+    'the first image click must select its node');
+  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none',
+    'the first image click must not preview it');
+  await page.click(`${nodeSelector} > img`);
+  await page.waitForSelector('#image-popup', { visible: true, timeout: 2000 });
+  assert.equal(await page.$eval('#popup-img', el => el.src), originalImage);
+  await page.click('#image-popup', { offset: { x: 10, y: 10 } });
+  await page.click(`${nodeSelector} > img`, { count: 2, delay: 60 });
+  await page.waitForSelector('#input-box', { visible: true, timeout: 2000 });
+  await page.waitForNetworkIdle({ idleTime: 350 });
+  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none',
+    'double-clicking a selected image must edit its text without opening preview');
+  await page.keyboard.press('Escape');
+  await page.waitForNetworkIdle({ idleTime: 350 });
+  result.logs.push({ ok: true, msg: 'first image click selects, selected single click previews, and double click edits without preview' });
+
+  const dragPoint = await page.$eval(`${nodeSelector} > img`, image => {
+    const rect = image.getBoundingClientRect();
+    return { x: rect.left + 20, y: rect.top + 20 };
+  });
+  await page.mouse.move(dragPoint.x, dragPoint.y);
+  await page.mouse.down();
+  await page.mouse.move(dragPoint.x + 20, dragPoint.y + 20, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForNetworkIdle({ idleTime: 350 });
+  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none',
+    'moving the pointer while pressed must not trigger image preview');
+  await page.click(`${nodeSelector} > img`);
+  await page.click('.map-container', { offset: { x: 10, y: 200 } });
+  await page.waitForNetworkIdle({ idleTime: 350 });
+  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none',
+    'clicking elsewhere must cancel a pending image preview');
+  assert.equal(await page.$eval(nodeSelector, el => el.classList.contains('selected')), false);
+  await page.click(`${nodeSelector} > img`, { count: 2, delay: 60 });
+  await page.waitForSelector('#input-box', { visible: true, timeout: 2000 });
+  await page.waitForNetworkIdle({ idleTime: 350 });
+  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none',
+    'double-clicking an unselected image must also edit without preview');
+  await page.keyboard.press('Escape');
+  await page.waitForNetworkIdle({ idleTime: 350 });
+  result.logs.push({ ok: true, msg: 'image dragging and selection changes cancel preview; unselected image double click edits directly' });
+
   await page.click(`${nodeSelector} .text strong`);
   assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none',
     'clicking text on an image node must not open the image preview');
@@ -178,18 +223,38 @@ try {
       const imageRect = image.getBoundingClientRect();
       const editorRect = editor.getBoundingClientRect();
       const textRect = text.getBoundingClientRect();
+      const collapsed = getComputedStyle(text).display === 'none';
+      const scale = node.getBoundingClientRect().width / node.offsetWidth;
+      const titleLeft = collapsed ? imageRect.left : textRect.left;
+      const titleTop = collapsed ? imageRect.bottom + 8 * scale : textRect.top;
       return {
         nodeOpacity: getComputedStyle(node).opacity,
         imageVisible: image.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }),
         belowImage: editorRect.top >= imageRect.bottom,
-        aligned: Math.abs(editorRect.left - textRect.left) < 2
-          && Math.abs(editorRect.top - textRect.top) < 2,
+        aligned: Math.abs(editorRect.left - titleLeft) < 2
+          && Math.abs(editorRect.top - titleTop) < 2,
       };
     });
     assert.equal(state.nodeOpacity, '1', 'editing must keep the image node opaque');
     assert.equal(state.imageVisible, true, 'the image must remain visible while typing');
     assert.equal(state.belowImage, true, 'the editor must not cover the image');
     assert.equal(state.aligned, true, 'the editor must align with the title');
+  };
+  const assertCompactImage = async (selector = nodeSelector) => {
+    const state = await page.$eval(selector, node => {
+      const style = getComputedStyle(node);
+      const image = node.querySelector('img');
+      return {
+        textDisplay: getComputedStyle(node.querySelector('.text')).display,
+        imageMargin: getComputedStyle(image).marginBottom,
+        extraHeight: node.offsetHeight - image.offsetHeight
+          - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+          - parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth),
+      };
+    });
+    assert.equal(state.textDisplay, 'none', 'empty image title must not occupy a line');
+    assert.equal(state.imageMargin, '0px', 'image-only nodes need no title gap');
+    assert.ok(Math.abs(state.extraHeight) < 2, `image-only height must exclude blank lines: ${state.extraHeight}`);
   };
   await assertImageVisibleWhileEditing();
   await page.keyboard.type('Updated image node');
@@ -205,8 +270,9 @@ try {
   assert.equal(saved.images['image-edit'], originalImage);
   result.logs.push({ ok: true, msg: 'image node text can be double-clicked, edited and saved without losing the image' });
 
+  await page.waitForNetworkIdle({ idleTime: 350 });
   await page.click(`${nodeSelector} > img`);
-  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'flex');
+  await page.waitForSelector('#image-popup', { visible: true, timeout: 2000 });
   assert.equal(await page.$eval('#popup-img', el => el.src), originalImage);
   await page.click('#image-popup', { offset: { x: 10, y: 10 } });
   assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none');
@@ -233,17 +299,26 @@ try {
   assert.deepEqual(JSON.parse(cleared.text).nodeData.image, nodeImage);
   assert.equal(cleared.images['image-edit'], originalImage);
   assert.equal(await page.$eval(`${nodeSelector} .text`, el => el.textContent), '');
+  await assertCompactImage();
+  await page.click('#action-undo');
+  assert.equal(await page.$eval(nodeSelector, el => el.nodeObj.topic), 'Updated image node');
+  assert.equal(await page.$eval(`${nodeSelector} > img`, el => getComputedStyle(el).marginBottom), '8px');
+  await page.click('#action-redo');
+  await assertCompactImage();
   await page.click(`${nodeSelector} > img`);
-  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'flex');
+  await page.waitForSelector('#image-popup', { visible: true, timeout: 2000 });
   assert.equal(await page.$eval('#popup-img', el => el.src), originalImage);
   await page.click('#image-popup', { offset: { x: 10, y: 10 } });
-  await page.keyboard.press('F2');
+  await page.click(`${nodeSelector} > img`, { count: 2, delay: 60 });
   await page.waitForSelector('#input-box', { visible: true });
   await assertImageVisibleWhileEditing();
+  await page.waitForNetworkIdle({ idleTime: 350 });
+  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none');
   await page.keyboard.type('Restored title');
   await page.keyboard.press('Enter');
   assert.equal(await page.$eval(`${nodeSelector} .text`, el => el.textContent), 'Restored title');
   assert.equal(await page.$eval(`${nodeSelector} .text`, el => getComputedStyle(el).visibility), 'visible');
+  assert.equal(await page.$eval(`${nodeSelector} > img`, el => getComputedStyle(el).marginBottom), '8px');
   result.logs.push({ ok: true, msg: 'clearing an image node title saves empty text and retains the image and its original' });
 
   // Exercise offset parents and scaled coordinates on both root and child nodes.
@@ -280,8 +355,27 @@ try {
       await assertImageVisibleWhileEditing(selector);
       await page.keyboard.press('Escape');
       assert.equal(await page.$eval(`${selector} .text`, el => getComputedStyle(el).visibility), 'visible');
+      await page.keyboard.press('F2');
+      await page.waitForSelector('#input-box', { visible: true });
+      await page.keyboard.type('   ');
+      await page.keyboard.press('Enter');
+      await assertCompactImage(selector);
+      await page.keyboard.press('F2');
+      await page.waitForSelector('#input-box', { visible: true });
+      await assertImageVisibleWhileEditing(selector);
+      await page.keyboard.type('Cancelled');
+      await page.keyboard.press('Escape');
+      await assertCompactImage(selector);
     }
+    const compactDocument = await page.evaluate(() => window.__TEST__.lastMessage);
+    await page.reload({ waitUntil: 'networkidle0' });
+    await page.waitForFunction(() => window.__TEST__?.done === true);
+    await page.evaluate(message => window.postMessage({ ...message, type: 'update' }, '*'), compactDocument);
+    await page.waitForNetworkIdle({ idleTime: 100 });
+    await assertCompactImage(nodeSelector);
+    await assertCompactImage(childSelector);
   }
+  result.logs.push({ ok: true, msg: 'image-only nodes collapse blank titles and gaps, survive undo/redo and reload, and reopen editors across layouts and zoom' });
   result.logs.push({ ok: true, msg: 'image nodes stay visible with aligned text editors across layouts and canvas zoom' });
 } catch (error) {
   result.passed = false;
@@ -409,6 +503,10 @@ try {
   assert.equal(await page.$eval(selector, el => el.nodeObj.image.width), 400);
   assert.equal(await page.$eval(`${selector} > img`, el => el.src), images.original);
   await page.click(`${selector} > img`);
+  await page.waitForNetworkIdle({ idleTime: 350 });
+  assert.equal(await page.$eval('#image-popup', el => el.style.display), 'none');
+  await page.click(`${selector} > img`);
+  await page.waitForSelector('#image-popup', { visible: true, timeout: 2000 });
   assert.equal(await page.$eval('#popup-img', el => el.src), images.original);
   await page.click('#image-popup', { offset: { x: 10, y: 10 } });
   if (process.env.IMAGE_RESIZE_SCREENSHOT_PATH) {

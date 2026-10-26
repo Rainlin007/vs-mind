@@ -14,6 +14,7 @@ import { NodeNoteTooltip } from './NodeNoteTooltip';
 import { setupNodeClipboard } from './nodeClipboard';
 import { setupNodeTextEditing } from './nodeTextEditing';
 import { ImageResizeControl } from './ImageResizeControl';
+import { setupImagePreview } from './imagePreview';
 import { CanvasToolbar, type CanvasToolbarHost } from './CanvasToolbar';
 
 interface VSCodeApi {
@@ -269,6 +270,11 @@ export class MindMapApp {
         });
 
         this.imageModal = new ImageModal(this.lastSelectedNode, this.mind);
+        setupImagePreview(this.mind, (node, image) => {
+            const nodeId = node.getAttribute('data-nodeid')?.replace(/^me/, '');
+            const original = nodeId ? this.originalImageCache[nodeId] : undefined;
+            this.imageModal.show(original ?? image.src, node);
+        });
         this.inspector = new NodeInspector(this.mind, () => this.saveChanges());
         this.themePanel = new ThemePanel(this.mind, () => this.saveChanges());
         this.autoSaveCheckbox = document.getElementById('auto-save-enabled') as HTMLInputElement | null;
@@ -590,26 +596,6 @@ export class MindMapApp {
             e.preventDefault();
             this.vscode.postMessage({ type: 'openExternal', url: link.href });
             return;
-        }
-
-        // Clicking the topic text must remain available for selection and editing.
-        const img = target.tagName === 'IMG' ? target : null;
-
-        if (img) {
-            let parent: HTMLElement | null = img.parentElement;
-            while (parent && !parent.hasAttribute('data-nodeid')) {
-                parent = parent.parentElement;
-            }
-            if (parent) {
-                const nodeId = parent.getAttribute('data-nodeid');
-                if (nodeId) {
-                    const cleanId = nodeId.startsWith('me') ? nodeId.substring(2) : nodeId;
-                    const originalBase64 = this.originalImageCache[cleanId];
-                    if (originalBase64) {
-                        this.imageModal.show(originalBase64, parent);
-                    }
-                }
-            }
         }
     }
 

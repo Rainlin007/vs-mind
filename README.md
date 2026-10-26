@@ -16,7 +16,7 @@ A VS Code extension that provides a visual mind map editor. Edit `.mmf` files di
 - **Layout & lines** — Left / right / bilateral layout; five curated styles: smooth curve, clean straight, rounded elbow, stepped polyline, and classic underline
 - **Rainbow branches** — Choose **Global → Line colors → Rainbow branches** for seven branch colors that adapt to light/dark themes; descendants inherit their branch color
 - **Background patterns** — None, dots, grid, or cross-dot with adjustable color and opacity
-- **Node images** — Paste images from clipboard with original-quality display; select the node and drag the bottom-right image handle to resize proportionally (Esc cancels, undo/redo supported). Click the image to preview full size.
+- **Node images** — Paste images from clipboard with original-quality display. Click to select, double-click to edit text, or click an already selected image to preview full size. Empty titles take no space. Drag the selected image's bottom-right handle to resize proportionally (Esc cancels, undo/redo supported).
 - **Export options** — Export to MMF, PNG, plaintext, or Markdown
 - **AI-readable context** — Markdown export includes node notes and AI notes; the bundled `mmf-format` skill converts MMF before an agent reads it
 - **Resizable panel** — Drag the left edge of the side panel to adjust width (180–520 px)
@@ -176,7 +176,7 @@ Nodes may include an optional `ai_note` string. It is stored in the MMF file for
 - **彩虹线条** — 在 **全局 → 线条配色 → 彩虹分支** 中开启；七种分支颜色适配亮暗主题，子分支沿用所属分支颜色
 - **布局与线条** — 向左 / 向右 / 双侧布局；流畅曲线、简洁直线、圆角折线、阶梯折线、经典下划线
 - **背景花纹** — 无 / 点阵 / 网格 / 十字点，可调颜色与透明度
-- **节点图片** — 从剪贴板粘贴图片，以原图清晰度显示；选中节点后拖动图片右下角可等比例调整大小，悬停或拖动时显示尺寸，支持 Esc 取消和撤销重做；点击图片可全屏预览
+- **节点图片** — 从剪贴板粘贴图片，以原图清晰度显示；单击选中，双击编辑文字，选中后单击图片可预览原图；文字为空时自动收起占位。选中节点后拖动图片右下角可等比例调整大小，悬停或拖动时显示尺寸，支持 Esc 取消和撤销重做
 - **导出选项** — 支持导出 MMF、PNG、纯文本或 Markdown
 - **AI 可读上下文** — Markdown 导出包含节点注释和 AI 备注；内置 `mmf-format` skill 会先转换 MMF，再交给 Agent 读取
 - **面板可调宽** — 拖动属性面板左边缘调整宽度（180–520 px）

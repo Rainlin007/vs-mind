@@ -482,7 +482,7 @@ body {
     display: none !important;
 }
 
-#fit-view {
+.mind-elixir-toolbar.rb > span {
     cursor: pointer;
 }
 
@@ -501,10 +501,13 @@ body {
     stroke-linejoin: round;
 }
 
-/* Allow image clicks to be distinguished from clicks on the topic text. */
+/* Route image gestures through the node's native selection, drag and editing. */
 .map-container me-tpc > img {
-    pointer-events: auto;
-    cursor: zoom-in;
+    pointer-events: none;
+}
+
+.map-container me-tpc:has(> img) {
+    cursor: pointer;
 }
 
 .map-container[data-rounded-images="true"] me-tpc img {
@@ -624,6 +627,16 @@ body {
 .map-container me-tpc > .text:empty {
     min-width: 1em;
     min-height: 1em;
+}
+
+/* The image already supplies a click target; an empty title needs no space. */
+.map-container me-tpc:has(> img) > .text:empty {
+    display: none;
+}
+
+/* Keep separation when tags, icons or a link still follow the image. */
+.map-container me-tpc:has(> .text:empty):not(:has(> .icons, > .tags, > .hyper-link)) > img {
+    margin-bottom: 0;
 }
 
 /* Node notes: marker on map + hover tooltip */

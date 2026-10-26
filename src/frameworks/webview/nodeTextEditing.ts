@@ -25,14 +25,21 @@ export function setupNodeTextEditing(host: NodeTextEditingHost): void {
         }
 
         const text = node.querySelector<HTMLElement>(':scope > .text');
-        if (text && node.querySelector(':scope > img')) {
+        const image = node.querySelector<HTMLImageElement>(':scope > img');
+        if (text && image) {
             // MindElixir hides the whole node and overlays its bounds. For image
             // nodes, overlay only the title; use canvas units even when zoomed.
             const nodeRect = node.getBoundingClientRect();
             const textRect = text.getBoundingClientRect();
             const scale = nodeRect.width / node.offsetWidth || 1;
-            editor.style.left = `${parseFloat(editor.style.left) + (textRect.left - nodeRect.left) / scale}px`;
-            editor.style.top = `${parseFloat(editor.style.top) + (textRect.top - nodeRect.top) / scale}px`;
+            // A collapsed title has no bounds. Anchor its editor below the image
+            // without expanding the node and shifting the map while typing.
+            const collapsed = getComputedStyle(text).display === 'none';
+            const imageRect = image.getBoundingClientRect();
+            const left = collapsed ? imageRect.left : textRect.left;
+            const top = collapsed ? imageRect.bottom + 8 * scale : textRect.top;
+            editor.style.left = `${parseFloat(editor.style.left) + (left - nodeRect.left) / scale}px`;
+            editor.style.top = `${parseFloat(editor.style.top) + (top - nodeRect.top) / scale}px`;
             editor.style.right = 'auto';
             editor.style.minWidth = `${Math.max(textRect.width / scale, 16)}px`;
             editor.style.padding = '0';
